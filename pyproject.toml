@@ -9,6 +9,9 @@ description = "Reference UE5M3 block scaling for FP4 training and quantized eval
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+maintainers = [
+  { name = "Robert Hu", email = "roberthu@graphcore.ai" },
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
@@ -21,6 +24,10 @@ dependencies = [
   "torch>=2.7",
   "safetensors>=0.4",
 ]
+
+[project.urls]
+Repository = "https://github.com/MrHuff/ue5m3-fp4"
+Issues = "https://github.com/MrHuff/ue5m3-fp4/issues"
 
 [project.optional-dependencies]
 dev = [

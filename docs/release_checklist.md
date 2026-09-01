@@ -17,8 +17,9 @@ approval.
   rerun it after the final reviewed tag as required above.
 - [x] Keep credentials, private checkpoint locations, bucket names, and
   cluster manifests out of source, tests, and examples.
-- [ ] **Blocking:** configure and test an actual private vulnerability-reporting
-  channel for the eventual public repository.
+- [x] Provide private correspondence/security email addresses in `SECURITY.md`.
+- [ ] **Blocking:** enable and test GitHub private vulnerability reporting
+  before changing the repository to public visibility.
 - [ ] Add CI only after reviewing workflow permissions and pinning third-party
   actions to immutable revisions.
 

@@ -425,3 +425,8 @@ to the organizational and third-party checks in the release checklist.
 
 Contributions should follow [`CONTRIBUTING.md`](CONTRIBUTING.md), especially
 the numerical-change and result-provenance requirements.
+
+## Contact
+
+For correspondence about the project, email `roberthu@graphcore.ai`. If that
+address is unavailable, use `robert.stats.hu@gmail.com`.
