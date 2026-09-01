@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 maintainers = [
-  { name = "Robert Hu", email = "roberthu@graphcore.ai" },
+  { name = "Robert Hu", email = "robert.stats.hu@gmail.com" },
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",

@@ -428,5 +428,4 @@ the numerical-change and result-provenance requirements.
 
 ## Contact
 
-For correspondence about the project, email `roberthu@graphcore.ai`. If that
-address is unavailable, use `robert.stats.hu@gmail.com`.
+For correspondence about the project, email `robert.stats.hu@gmail.com`.
