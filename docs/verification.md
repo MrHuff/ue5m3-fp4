@@ -63,14 +63,20 @@ zero findings. A separate pattern audit found no private storage/workspace
 paths or common literal token forms outside the negative tests that contain
 those strings intentionally.
 
-This does not close the release gate: Gitleaks or TruffleHog must still scan the
-complete final Git history, and the destination repository must have a tested
-private vulnerability-reporting channel.
+Gitleaks 8.29.1 was downloaded from its official GitHub release, its Linux
+arm64 archive was checked against the release checksum, and `gitleaks git`
+reported no leaks across the complete two-commit release-candidate history.
+Version 8.29.1 was used instead of 8.30.1 because a public upstream report says
+the latter can fail to apply its default rules
+([gitleaks#2170](https://github.com/gitleaks/gitleaks/issues/2170)). This does
+not close the final release gate: repeat the scan after the reviewed tag, and
+configure a tested private vulnerability-reporting channel for the destination
+repository.
 
 ## Checks still required
 
 - GPU numerical checks on documented hardware;
 - supported released Python/PyTorch CPU and CUDA matrices;
-- a complete-history Gitleaks or TruffleHog report;
+- a repeat complete-history scan on the final reviewed tag;
 - organizational release and licensing/attribution approval; and
 - model-scale integration and reproduction tests after those assets are added.

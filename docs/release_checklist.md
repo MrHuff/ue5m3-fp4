@@ -13,6 +13,8 @@ approval.
   objects.
 - [ ] **Blocking:** run Gitleaks or TruffleHog over the complete standalone Git
   history immediately before the public push and retain the report.
+- [x] Run Gitleaks 8.29.1 over the complete current release-candidate history;
+  rerun it after the final reviewed tag as required above.
 - [x] Keep credentials, private checkpoint locations, bucket names, and
   cluster manifests out of source, tests, and examples.
 - [ ] **Blocking:** configure and test an actual private vulnerability-reporting
