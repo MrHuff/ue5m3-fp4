@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Graphcore Ltd. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version: 1
+name: fp4_calibrated_frozen
+numeric_path: fp4_fake_quantized
+gemm_output_model: decoded_operand_torch_matmul
+torch_matmul_policy: runtime_attested
+native_hardware: false
+forward_only: true
+weight_reference:
+  policy: post_load_frozen_global_amax
+activation_reference:
+  policy: disjoint_calibration_maximum_then_frozen
+  immutable_calibration_manifest_required: true
+  measurement_data_must_be_disjoint: true
+rounding:
+  weights: ties_to_even
+  activations: ties_to_even
+measurement_requires_setup: true
+training_step_or_cache_inherited: false

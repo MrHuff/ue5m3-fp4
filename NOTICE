@@ -1,0 +1,12 @@
+UE5M3 FP4
+Copyright 2026 Graphcore Ltd.
+
+This clean extraction is derived from Graphcore's gc-training repository at
+commit 99a96f2a345ab4a9d37904cfdcdf93777458106d.
+
+The floating-point format and rounding implementation follows numerical logic
+previously adapted from NVIDIA TransformerEngine, which is distributed under
+the Apache License 2.0.  The source revision inspected during extraction was
+01aef4fc721bd12fd09cd56d53a314aee1b953d6.  The extracted implementation is
+reduced to the E2M1 and unsigned-E5M3 behaviors needed by this project and adds
+the UE5M3 recipe, scale lifecycle, tests, and documentation.

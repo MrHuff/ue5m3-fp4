@@ -1,0 +1,23 @@
+# Copyright (c) 2026 Graphcore Ltd. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version: 1
+name: fp4_training_replay_d50
+numeric_path: fp4_fake_quantized
+gemm_output_model: decoded_operand_torch_matmul
+torch_matmul_policy: runtime_attested
+native_hardware: false
+forward_only: true
+weight_reference:
+  policy: post_load_frozen_global_amax
+activation_reference:
+  policy: periodic_sample_and_hold
+  refresh_interval_logical_steps: 50
+  initial_state: cold
+  ordered_work_units_required: true
+  reset_between_tasks: false
+rounding:
+  weights: ties_to_even
+  activations: ties_to_even
+measurement_requires_setup: true
+training_step_or_cache_inherited: false

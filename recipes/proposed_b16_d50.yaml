@@ -1,0 +1,24 @@
+# Copyright (c) 2026 Graphcore Ltd. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version: 1
+name: proposed_ue5m3_b16_d50
+block_size: 16
+payload_format: E2M1
+scale_format: UE5M3
+scale_target: 448.0
+delayed_scale_interval: 50
+activation_rounding: ties_to_even
+weight_rounding: ties_to_even
+upstream_gradient_rounding: stochastic_8bit_midpoint
+scale_rounding: ties_to_even
+two_dimensional_weights: true
+randomized_hadamard_transform: false
+scale_target_overrides:
+  # Only dY in the weight-gradient GEMM gets this target.  The dY operand in
+  # the data-gradient GEMM retains the default target of 448.
+  - role: wgrad_upstream_gradient
+    module_kind: mixer.down_proj
+    layer_start: 44
+    layer_end: 51
+    scale_target: 2048.0
