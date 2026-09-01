@@ -61,9 +61,7 @@ def test_tensor_validation_has_exact_sequence_and_token_accounting() -> None:
     assert result["metrics"]["nll"] == pytest.approx(expected_nll)
     assert result["metrics"]["perplexity"] == pytest.approx(math.exp(expected_nll))
     assert result["per_sequence"]["token_counts"] == [3, 3]
-    assert [
-        item["sequence_index"] for item in result["per_sequence"]["provenance"]
-    ] == [0, 1]
+    assert [item["sequence_index"] for item in result["per_sequence"]["provenance"]] == [0, 1]
     assert math.fsum(result["per_sequence"]["loss_sums"]) == pytest.approx(
         result["metrics"]["loss_sum"]
     )
@@ -103,9 +101,11 @@ def test_local_safetensors_and_tensor_sources_preserve_order(tmp_path) -> None:
     assert sources[2]["identifier"] == "tensor-00002"
     assert str(tmp_path) not in repr(sources)
     assert all(len(source["sha256"]) == 64 for source in sources)
-    assert [
-        item["sequence_index"] for item in result["per_sequence"]["provenance"]
-    ] == [0, 1, 2]
+    assert [item["sequence_index"] for item in result["per_sequence"]["provenance"]] == [
+        0,
+        1,
+        2,
+    ]
     assert result["metrics"]["token_count"] == 9
     assert result["evaluation"]["forward_count"] == 3
 
@@ -147,9 +147,7 @@ def test_chunked_lm_head_matches_full_model_path() -> None:
         logit_path="chunked_lm_head",
     )
 
-    assert chunked["metrics"]["loss_sum"] == pytest.approx(
-        full["metrics"]["loss_sum"]
-    )
+    assert chunked["metrics"]["loss_sum"] == pytest.approx(full["metrics"]["loss_sum"])
     assert chunked["per_sequence"]["loss_sums"] == pytest.approx(
         full["per_sequence"]["loss_sums"]
     )

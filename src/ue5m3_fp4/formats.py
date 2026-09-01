@@ -230,7 +230,9 @@ def round_to_format(
     # The training kernel forms tensor and block scales in FP32 even when the
     # learned operand uses another floating dtype.
     work = tensor.to(torch.float32)
-    negative = torch.signbit(work) if format.signed else torch.zeros_like(work, dtype=torch.bool)
+    negative = (
+        torch.signbit(work) if format.signed else torch.zeros_like(work, dtype=torch.bool)
+    )
     magnitude = work.abs() if format.signed else work
     rounded = _round_magnitudes(
         magnitude,
@@ -291,7 +293,9 @@ def _block_amax_and_expand(
 
     if two_dimensional:
         if magnitude.ndim < 2:
-            raise ValueError("two_dimensional=True requires a tensor with at least 2 dimensions")
+            raise ValueError(
+                "two_dimensional=True requires a tensor with at least 2 dimensions"
+            )
         rows, columns = magnitude.shape[-2:]
         padded_rows = ((rows + block_size - 1) // block_size) * block_size
         padded_columns = ((columns + block_size - 1) // block_size) * block_size
@@ -319,9 +323,7 @@ def _block_amax_and_expand(
                 column_blocks,
                 block_size,
             )
-            return expanded.reshape(*leading, padded_rows, padded_columns)[
-                ..., :rows, :columns
-            ]
+            return expanded.reshape(*leading, padded_rows, padded_columns)[..., :rows, :columns]
 
         return block_amax, expand
 
@@ -517,12 +519,12 @@ def quantize_dequantize_blocks_with_metadata(
 
 
 __all__ = [
-    "BlockQuantizationMetadata",
     "E2M1",
+    "UE5M3",
+    "BlockQuantizationMetadata",
     "FloatFormat",
     "RoundingMode",
     "StochasticFast",
-    "UE5M3",
     "normalize_rounding",
     "quantize_dequantize_blocks",
     "quantize_dequantize_blocks_with_metadata",

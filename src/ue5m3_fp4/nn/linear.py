@@ -13,7 +13,6 @@ from ue5m3_fp4.formats import RoundingMode, quantize_dequantize_blocks
 from ue5m3_fp4.recipe import UE5M3Recipe
 from ue5m3_fp4.scaling.training import TrainingScaleState
 
-
 _INFERENCE_ACTIVATION_MODES = {
     "current_tensor",
     "training_replay",
@@ -35,7 +34,7 @@ class _UE5M3LinearFunction(torch.autograd.Function):
         inputs: torch.Tensor,
         weight: torch.Tensor,
         bias: torch.Tensor | None,
-        owner: "UE5M3Linear",
+        owner: UE5M3Linear,
     ) -> torch.Tensor:
         if owner._inference["active"] and torch.is_grad_enabled():
             raise RuntimeError("Post-load FP4 inference is forward-only")
@@ -115,9 +114,9 @@ class _UE5M3LinearFunction(torch.autograd.Function):
             tensor_reference=ctx.activation_reference,
         )
 
-        grad_input = (
-            q_dy_dgrad.to(torch.float32) @ q_weight.to(torch.float32)
-        ).reshape_as(inputs)
+        grad_input = (q_dy_dgrad.to(torch.float32) @ q_weight.to(torch.float32)).reshape_as(
+            inputs
+        )
         grad_weight = q_dy_wgrad.to(torch.float32) @ q_saved_inputs_transposed.to(
             torch.float32
         ).transpose(0, 1)
@@ -194,7 +193,7 @@ class UE5M3Linear(torch.nn.Module):
         recipe: UE5M3Recipe,
         scale_state: TrainingScaleState,
         module_name: str,
-    ) -> "UE5M3Linear":
+    ) -> UE5M3Linear:
         if not isinstance(module, torch.nn.Linear):
             raise TypeError("from_float expects torch.nn.Linear")
         converted = cls(
@@ -230,9 +229,7 @@ class UE5M3Linear(torch.nn.Module):
             scale_target=self.recipe.scale_target_for(role, self.module_name),
             rounding=self.recipe.rounding_for(role),
             tensor_reference=tensor_reference,
-            two_dimensional=(
-                role == "weight" and self.recipe.two_dimensional_weights
-            ),
+            two_dimensional=(role == "weight" and self.recipe.two_dimensional_weights),
         ).to(tensor.dtype)
 
     @staticmethod
@@ -264,9 +261,7 @@ class UE5M3Linear(torch.nn.Module):
             state["counters"]["activation_calibration_resolutions"] += 1
             return self._reference_tensor(current, tensor)
         if phase != "measuring":
-            raise RuntimeError(
-                f"FP4 inference forward is not allowed in phase {phase!r}"
-            )
+            raise RuntimeError(f"FP4 inference forward is not allowed in phase {phase!r}")
         if mode == "current_tensor":
             current = float(_finite_amax(tensor).item())
             state["counters"]["activation_current_resolutions"] += 1
@@ -300,16 +295,13 @@ class UE5M3Linear(torch.nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if inputs.shape[-1] != self.in_features:
-            raise ValueError(
-                f"Expected input width {self.in_features}, got {inputs.shape[-1]}"
-            )
+            raise ValueError(f"Expected input width {self.in_features}, got {inputs.shape[-1]}")
         # ``torch.autograd.Function.forward`` itself runs with grad mode
         # disabled, so enforce the forward-only inference contract here at the
         # public module boundary.
         if self._inference["active"] and torch.is_grad_enabled():
             raise RuntimeError(
-                "Post-load FP4 inference requires torch.no_grad() or "
-                "torch.inference_mode()"
+                "Post-load FP4 inference requires torch.no_grad() or torch.inference_mode()"
             )
         return _UE5M3LinearFunction.apply(inputs, self.weight, self.bias, self)
 
@@ -322,9 +314,7 @@ class UE5M3Linear(torch.nn.Module):
     ) -> dict[str, Any]:
         if type(clear_training_state) is not bool:
             raise TypeError("clear_training_state must be bool")
-        cleared_entries = (
-            self.scale_state.clear_runtime() if clear_training_state else 0
-        )
+        cleared_entries = self.scale_state.clear_runtime() if clear_training_state else 0
         self._inference_generation += 1
         self._inference = {
             "active": False,
@@ -372,8 +362,7 @@ class UE5M3Linear(torch.nn.Module):
             and torch.distributed.get_world_size() > 1
         ):
             raise RuntimeError(
-                "The deterministic FP4 inference scaling protocol requires "
-                "one process"
+                "The deterministic FP4 inference scaling protocol requires one process"
             )
         forward_rounding = {
             "activation_rounding": self.recipe.activation_rounding,
@@ -386,19 +375,13 @@ class UE5M3Linear(torch.nn.Module):
             if mode is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
         }
         if stochastic:
-            details = ", ".join(
-                f"{name}={mode}" for name, mode in sorted(stochastic.items())
-            )
+            details = ", ".join(f"{name}={mode}" for name, mode in sorted(stochastic.items()))
             raise ValueError(
-                "Deterministic FP4 inference rejects stochastic forward "
-                f"rounding: {details}"
+                f"Deterministic FP4 inference rejects stochastic forward rounding: {details}"
             )
         if activation_mode not in _INFERENCE_ACTIVATION_MODES:
             raise ValueError(f"Unknown FP4 inference mode {activation_mode!r}")
-        if (
-            activation_mode == "training_replay"
-            and self.recipe.delayed_scale_interval != 50
-        ):
+        if activation_mode == "training_replay" and self.recipe.delayed_scale_interval != 50:
             raise ValueError(
                 "training_replay implements the recorded D=50 protocol and "
                 "requires delayed_scale_interval=50"
@@ -505,9 +488,7 @@ class UE5M3Linear(torch.nn.Module):
                 "forward.x": state["activation_calibration_count"]
             },
             "counters": dict(state["counters"]),
-            "legacy_training_state_cleared": dict(
-                state["legacy_training_state_cleared"]
-            ),
+            "legacy_training_state_cleared": dict(state["legacy_training_state_cleared"]),
             "rounding_modes": {
                 "round_mode_activations": self.recipe.activation_rounding,
                 "round_mode_weights": self.recipe.weight_rounding,
@@ -517,12 +498,8 @@ class UE5M3Linear(torch.nn.Module):
                 "logical_step": state["training_replay_logical_step"],
                 "last_consumed_step": state["training_replay_last_consumed_step"],
                 "cache": {"forward.x": state["training_replay_cache"]},
-                "last_refresh_steps": {
-                    "forward.x": state["training_replay_last_refresh_step"]
-                },
-                "refresh_trace": {
-                    "forward.x": list(state["training_replay_refresh_trace"])
-                },
+                "last_refresh_steps": {"forward.x": state["training_replay_last_refresh_step"]},
+                "refresh_trace": {"forward.x": list(state["training_replay_refresh_trace"])},
             },
             "format": {
                 "payload": self.recipe.payload_format.name,
@@ -531,9 +508,7 @@ class UE5M3Linear(torch.nn.Module):
                 "scale_max_activations": self.recipe.scale_target_for(
                     "activation", self.module_name
                 ),
-                "scale_max_weights": self.recipe.scale_target_for(
-                    "weight", self.module_name
-                ),
+                "scale_max_weights": self.recipe.scale_target_for("weight", self.module_name),
                 "gemm_output_model": "decoded_operand_torch_matmul",
                 "torch_matmul_policy": matmul_policy,
                 "native_hardware": False,

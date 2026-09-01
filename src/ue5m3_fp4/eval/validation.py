@@ -30,7 +30,6 @@ import torch.nn.functional as F
 from safetensors import safe_open
 from safetensors.torch import load
 
-
 VALIDATION_RESULT_SCHEMA = "ue5m3_fp4_local_validation_v1"
 
 ValidationInput: TypeAlias = torch.Tensor | str | Path
@@ -104,8 +103,7 @@ def discover_validation_paths(inputs: Iterable[str | Path]) -> list[Path]:
         for candidate in candidates:
             if not candidate.is_file() or candidate.suffix != ".safetensors":
                 raise ValueError(
-                    "Validation files must use the .safetensors suffix; "
-                    f"got {candidate}"
+                    f"Validation files must use the .safetensors suffix; got {candidate}"
                 )
             resolved = candidate.resolve()
             if resolved in seen:
@@ -123,13 +121,10 @@ def _as_input_list(inputs: ValidationInputs) -> list[ValidationInput]:
         raise ValueError("At least one validation input is required")
     if any(not isinstance(item, (torch.Tensor, str, Path)) for item in result):
         invalid = next(
-            item
-            for item in result
-            if not isinstance(item, (torch.Tensor, str, Path))
+            item for item in result if not isinstance(item, (torch.Tensor, str, Path))
         )
         raise TypeError(
-            "Validation inputs must be tensors or local paths; "
-            f"got {type(invalid)!r}"
+            f"Validation inputs must be tensors or local paths; got {type(invalid)!r}"
         )
     return result
 
@@ -143,8 +138,7 @@ def _normalize_tensor(tensor: torch.Tensor, *, label: str) -> torch.Tensor:
         tensor = tensor.unsqueeze(0)
     if tensor.ndim != 2:
         raise ValueError(
-            f"{label} must have shape [N, sequence_length + 1]; "
-            f"got {tuple(tensor.shape)}"
+            f"{label} must have shape [N, sequence_length + 1]; got {tuple(tensor.shape)}"
         )
     if tensor.shape[0] <= 0 or tensor.shape[1] <= 1:
         raise ValueError(
@@ -184,9 +178,7 @@ def _prepare_sources(
             continue
         resolved = Path(item).resolve()
         if resolved in seen_paths:
-            raise ValueError(
-                f"Validation file was provided more than once: {resolved}"
-            )
+            raise ValueError(f"Validation file was provided more than once: {resolved}")
         seen_paths.add(resolved)
 
     prepared: list[_PreparedSource] = []
@@ -210,7 +202,8 @@ def _prepare_sources(
         else:
             path = Path(item).resolve()
             with safe_open(path, framework="pt", device="cpu") as handle:
-                if tensor_key not in handle.keys():
+                # ``safe_open`` exposes ``keys()`` but is not itself iterable.
+                if tensor_key not in handle.keys():  # noqa: SIM118
                     raise KeyError(f"{path} does not contain tensor {tensor_key!r}")
                 tensor_slice = handle.get_slice(tensor_key)
                 raw_shape = tuple(tensor_slice.get_shape())
@@ -311,8 +304,7 @@ def _extract_hidden_states(outputs: Any) -> torch.Tensor:
         raise TypeError("The model backbone output does not expose hidden states")
     if not isinstance(hidden_states, torch.Tensor):
         raise TypeError(
-            "Expected backbone hidden states to be a tensor, got "
-            f"{type(hidden_states)!r}"
+            f"Expected backbone hidden states to be a tensor, got {type(hidden_states)!r}"
         )
     return hidden_states
 
@@ -411,8 +403,7 @@ def _sequence_loss_sums_from_hidden_states(
         chunk_logits = lm_head(chunk_hidden)
         if not isinstance(chunk_logits, torch.Tensor):
             raise TypeError(
-                "Expected model.lm_head output to be a tensor, got "
-                f"{type(chunk_logits)!r}"
+                f"Expected model.lm_head output to be a tensor, got {type(chunk_logits)!r}"
             )
         sums += _cross_entropy_sums(chunk_logits, targets[:, start:stop])
     return sums.cpu()
@@ -519,9 +510,7 @@ def evaluate_validation(
                     per_sequence_token_counts.append(target_tokens_per_sequence)
                     per_sequence_provenance.append(
                         {
-                            "sequence_index": (
-                                source.metadata.sequence_offset + source_row
-                            ),
+                            "sequence_index": (source.metadata.sequence_offset + source_row),
                             "source_index": source_index,
                             "source_identifier": source.metadata.identifier,
                             "source_sha256": source.metadata.sha256,

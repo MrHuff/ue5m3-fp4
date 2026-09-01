@@ -64,9 +64,7 @@ def normalize_role(role: str | OperandRole) -> OperandRole:
         raise ValueError(f"unknown operand role {role!r}; expected {choices}") from error
 
 
-_NEMOTRON_DOWN_PROJ = re.compile(
-    r"(?:^|\.)layers\.(?P<layer>\d+)\.mixer\.down_proj(?:$|\.)"
-)
+_NEMOTRON_DOWN_PROJ = re.compile(r"(?:^|\.)layers\.(?P<layer>\d+)\.mixer\.down_proj(?:$|\.)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,7 +217,9 @@ class UE5M3Recipe:
         if self.randomized_hadamard_transform:
             raise ValueError("this portable recipe does not implement RHT")
         object.__setattr__(self, "scale_target_overrides", tuple(self.scale_target_overrides))
-        if any(not isinstance(item, ScaleTargetOverride) for item in self.scale_target_overrides):
+        if any(
+            not isinstance(item, ScaleTargetOverride) for item in self.scale_target_overrides
+        ):
             raise TypeError("scale_target_overrides must contain ScaleTargetOverride values")
 
     @classmethod
@@ -343,9 +343,7 @@ class UE5M3Recipe:
             delayed_scale_interval=data["delayed_scale_interval"],
             activation_rounding=normalize_rounding(data["activation_rounding"]),
             weight_rounding=normalize_rounding(data["weight_rounding"]),
-            upstream_gradient_rounding=normalize_rounding(
-                data["upstream_gradient_rounding"]
-            ),
+            upstream_gradient_rounding=normalize_rounding(data["upstream_gradient_rounding"]),
             scale_rounding=normalize_rounding(data["scale_rounding"]),
             two_dimensional_weights=data["two_dimensional_weights"],
             randomized_hadamard_transform=data["randomized_hadamard_transform"],

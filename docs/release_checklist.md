@@ -1,30 +1,74 @@
 # Public-release checklist
 
-The clean repository must not be made public until all blocking items are
-closed.
+This repository is a private alpha release candidate. Do not make it public
+until every item marked **blocking** is complete. Checked boxes describe work
+verified in this standalone repository; they do not waive organizational
+approval.
 
-## Credentials and history
+## Credentials, security, and history
 
-- Obtain security approval for the clean extraction and complete any required
-  source-repository credential remediation out of band.
-- Keep this repository on fresh history; never import the source Git objects.
-- Run gitleaks or TruffleHog over the complete standalone history before push.
-- Confirm that CI and examples run without credentials.
+- [ ] **Blocking:** obtain security approval for the clean extraction and
+  complete any source-repository credential remediation out of band.
+- [x] Build the extraction on fresh Git history without importing source Git
+  objects.
+- [ ] **Blocking:** run Gitleaks or TruffleHog over the complete standalone Git
+  history immediately before the public push and retain the report.
+- [x] Keep credentials, private checkpoint locations, bucket names, and
+  cluster manifests out of source, tests, and examples.
+- [ ] **Blocking:** configure and test an actual private vulnerability-reporting
+  channel for the eventual public repository.
+- [ ] Add CI only after reviewing workflow permissions and pinning third-party
+  actions to immutable revisions.
 
 ## Rights and attribution
 
-- Confirm organizational approval for the Apache-2.0 code release.
-- Review `NOTICE` against the exact TransformerEngine source revision.
-- Confirm author list and paper metadata before adding `CITATION.cff`.
-- Keep corporate logos and internal report templates out unless trademark and
-  template publication permission is explicit.
+- [ ] **Blocking:** confirm organizational approval for an Apache-2.0 code
+  release.
+- [ ] **Blocking:** review `NOTICE` against the exact Transformer Engine source
+  revision and confirm that the extracted treatment and attribution are
+  sufficient.
+- [ ] Confirm the author list and paper metadata, then add `CITATION.cff`.
+- [x] Exclude corporate logos and internal report templates from this initial
+  extraction.
+- [ ] Complete a final trademark/name review for the project description.
 
-## Technical release gates
+## Packaging and CPU reference
 
-- Build and install a wheel in a fresh environment.
-- Run CPU unit tests and GPU numerical tests on the documented hardware.
-- Freeze a supported Python/PyTorch matrix.
-- Add a tiny end-to-end checkpoint reload example.
-- Add optional TorchTitan/Nemotron-H integration without vendored submodules.
-- Document that the probe-matched software path is not native UE5M3 hardware.
-- Publish only sanitized metric tables or public artifact identifiers.
+- [x] Provide a synthetic end-to-end training, checkpoint-reload, and
+  quantized-inference example.
+- [x] Document that the decoded-Torch path is software fake quantization, not
+  native UE5M3 hardware or the paper's probe-matched comparator.
+- [x] Require explicit model-conversion coverage rather than silently choosing
+  eligible linears.
+- [x] Keep the canonical training and inference recipes in source distributions.
+- [x] Verify that those recipes are also installed and discoverable from a
+  wheel.
+- [x] Rebuild the wheel and sdist, install the wheel into a fresh environment,
+  and rerun all tests and examples for the current release candidate.
+- [ ] Record the final source-distribution and wheel SHA-256 digests.
+- [ ] Freeze and test a supported Python/PyTorch CPU matrix.
+
+## GPU and model integration
+
+- [ ] **Blocking:** run the documented CUDA numerical tests on supported
+  hardware and retain exact device, CUDA, PyTorch, and matmul-policy provenance.
+- [ ] Add an optional TorchTitan/Nemotron-H adapter without vendored submodules.
+- [ ] Publish the architecture's exact eligible-linear allowlist.
+- [ ] Add the probe-matched GEMM backend before claiming reproduction of the
+  corresponding paper comparisons.
+- [ ] Add independently runnable Transformer Engine/NVFP4 and BF16 reference
+  paths before presenting cross-path reproduction results.
+- [ ] Add sanitized, immutable public data/checkpoint manifests and an OLMES
+  runner before advertising one-command paper-scale reproduction.
+
+## Final publication audit
+
+- [ ] Confirm all public metric tables and artifact identifiers are sanitized
+  and backed by releasable data.
+- [ ] Verify README commands from a clean clone with no pre-existing caches or
+  credentials.
+- [ ] Confirm `SOURCE_PROVENANCE.md` hashes match the final committed sources.
+- [ ] Tag the exact reviewed commit; build release artifacts from that tag.
+- [ ] Re-run the complete-history secret scan on the tagged history.
+- [ ] Have a maintainer who did not prepare the release verify every blocking
+  item before changing repository visibility.

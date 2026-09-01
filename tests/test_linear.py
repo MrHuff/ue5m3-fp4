@@ -70,9 +70,7 @@ def test_training_gemms_use_selective_dy_rounding_and_one_delayed_reference(
     assert calls[2]["tensor_reference"] is calls[3]["tensor_reference"]
     assert calls[2]["tensor"].shape == (2, 3)
     assert calls[3]["tensor"].shape == (3, 2)
-    torch.testing.assert_close(
-        calls[5]["tensor"], inputs.detach().transpose(0, 1).contiguous()
-    )
+    torch.testing.assert_close(calls[5]["tensor"], inputs.detach().transpose(0, 1).contiguous())
     torch.testing.assert_close(
         inputs.grad,
         torch.ones(2, 3) @ expected_weight,
@@ -131,13 +129,9 @@ def test_real_linear_implements_current_tensor_inference_lifecycle() -> None:
     assert provenance["numeric_path"] == "quantized_ue5m3_fp4_decoded_torch"
     assert provenance["gemm_output_model"] == "decoded_operand_torch_matmul"
     assert provenance["native_hardware"] is False
-    assert provenance["resolved_formats"][0]["torch_matmul_policy"][
-        "device_type"
-    ] == "cpu"
+    assert provenance["resolved_formats"][0]["torch_matmul_policy"]["device_type"] == "cpu"
     assert provenance["fp4_quantization_applied"] is True
-    assert provenance["inference_scaling_protocol"][
-        "training_step_or_cache_inherited"
-    ] is False
+    assert provenance["inference_scaling_protocol"]["training_step_or_cache_inherited"] is False
 
 
 def test_inference_reset_discards_process_local_training_cache() -> None:

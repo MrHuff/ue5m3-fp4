@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import argparse
+
 import torch
 
 from ue5m3_fp4.nn import convert_linear_modules, select_all_linears
@@ -25,7 +27,19 @@ class TinyMLP(torch.nn.Module):
         return self.layers(inputs)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--activation-mode",
+        choices=("current_tensor", "training_replay", "calibrated_frozen"),
+        default="current_tensor",
+        help="post-load activation-scale lifecycle to exercise",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     torch.manual_seed(7)
     recipe = UE5M3Recipe.proposed()
     training_scales = TrainingScaleState(recipe)
@@ -53,19 +67,42 @@ def main() -> None:
     )
     inference_model.eval()
 
-    controller = FP4InferenceScalingController(
-        inference_model,
-        activation_mode="current_tensor",
-        checkpoint_identity={"id": "in-memory-synthetic-fixture"},
-    )
+    controller_kwargs: dict[str, object] = {
+        "activation_mode": args.activation_mode,
+        "checkpoint_identity": {"id": "in-memory-synthetic-fixture"},
+    }
+    if args.activation_mode == "training_replay":
+        controller_kwargs["replay_work_unit"] = {
+            "kind": "fixed_forward_batch",
+            "size": int(inputs.shape[0]),
+        }
+    controller = FP4InferenceScalingController(inference_model, **controller_kwargs)
     controller.reset_after_checkpoint_load()
     controller.calibrate_and_freeze_weights()
-    controller.begin_measurement()
+    if args.activation_mode == "calibrated_frozen":
+        calibration_inputs = torch.randn_like(inputs)
+        controller.begin_activation_calibration(
+            {"id": "disjoint-in-memory-synthetic-calibration"}
+        )
+        with torch.inference_mode():
+            controller.record_activation_calibration_batch(calibration_inputs)
+            inference_model(calibration_inputs)
+        controller.freeze_activation_scales()
+    evaluation_order = None
+    if args.activation_mode == "training_replay":
+        evaluation_order = {"order": "single synthetic batch", "seed": 7}
+    controller.begin_measurement(evaluation_order=evaluation_order)
     with torch.inference_mode():
+        if args.activation_mode == "training_replay":
+            controller.advance_training_replay_work_unit(
+                inputs,
+                effective_token_count=inputs.numel(),
+            )
         output = inference_model(inputs)
 
     provenance = controller.provenance()
     print(f"training loss: {loss.item():.6f}")
+    print(f"activation mode: {args.activation_mode}")
     print(f"inference output shape: {tuple(output.shape)}")
     print(f"numeric path: {provenance['numeric_path']}")
 

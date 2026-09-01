@@ -62,9 +62,7 @@ def test_converter_preserves_frozen_parameters_and_optimizer_references() -> Non
     assert not model.block[0].weight.requires_grad
     assert {id(parameter) for parameter in model.parameters()} == original_parameters
     assert {
-        id(parameter)
-        for group in optimizer.param_groups
-        for parameter in group["params"]
+        id(parameter) for group in optimizer.param_groups for parameter in group["params"]
     } == original_parameters
 
 

@@ -14,7 +14,6 @@ from ue5m3_fp4.nn.linear import UE5M3Linear
 from ue5m3_fp4.recipe import UE5M3Recipe
 from ue5m3_fp4.scaling.training import TrainingScaleState
 
-
 LinearSelector = Callable[[str, torch.nn.Linear], bool]
 
 
@@ -59,7 +58,10 @@ def convert_linear_modules(
     if not isinstance(model, torch.nn.Module):
         raise TypeError("model must be a torch.nn.Module")
     if isinstance(model, torch.nn.Linear):
-        raise ValueError("convert_linear_modules cannot replace the model root")
+        # The type is valid; its placement as the root is the invalid value.
+        raise ValueError(  # noqa: TRY004
+            "convert_linear_modules cannot replace the model root"
+        )
 
     recipe = recipe or UE5M3Recipe.proposed()
     if not isinstance(recipe, UE5M3Recipe):
@@ -88,8 +90,7 @@ def convert_linear_modules(
     ]
     if selected_subclasses:
         rendered = ", ".join(
-            f"{module_name} ({class_name})"
-            for module_name, class_name in selected_subclasses
+            f"{module_name} ({class_name})" for module_name, class_name in selected_subclasses
         )
         raise TypeError(
             "Generic conversion supports exact nn.Linear modules only; "

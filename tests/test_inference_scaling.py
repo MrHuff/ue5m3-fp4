@@ -92,9 +92,7 @@ class FakeFP4Module(torch.nn.Module):
                     else {}
                 ),
             },
-            "activation_calibration_counts": {
-                "forward.x": self.activation_observations
-            },
+            "activation_calibration_counts": {"forward.x": self.activation_observations},
             "counters": dict(self.counters),
             "legacy_training_state_cleared": {},
             "rounding_modes": {

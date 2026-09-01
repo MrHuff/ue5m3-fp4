@@ -25,7 +25,6 @@ from typing import Any
 
 import torch
 
-
 EVALUATION_NUMERIC_PATH_SCHEMA = "ue5m3_fp4_evaluation_numeric_path_v1"
 FP4_INFERENCE_SCALING_PROTOCOL_SCHEMA = "ue5m3_fp4_inference_scaling_v1"
 FP4_INFERENCE_ACTIVATION_MODES = frozenset(
@@ -144,8 +143,7 @@ class FP4InferenceScalingController:
         ]
         if not modules:
             raise ValueError(
-                "The model contains no modules implementing the FP4 inference "
-                "scaling lifecycle"
+                "The model contains no modules implementing the FP4 inference scaling lifecycle"
             )
         if any(not name for name, _ in modules):
             raise ValueError("The model root cannot itself be the FP4 linear module")
@@ -158,9 +156,7 @@ class FP4InferenceScalingController:
         if activation_mode == "training_replay":
             self.replay_work_unit = self._validate_replay_work_unit(replay_work_unit)
         elif replay_work_unit is not None:
-            raise ValueError(
-                "replay_work_unit is only valid for training_replay mode"
-            )
+            raise ValueError("replay_work_unit is only valid for training_replay mode")
         else:
             self.replay_work_unit = None
         self.modules = tuple(sorted(modules, key=lambda item: item[0]))
@@ -177,7 +173,8 @@ class FP4InferenceScalingController:
         value: Mapping[str, Any] | None,
     ) -> dict[str, Any]:
         if not isinstance(value, Mapping):
-            raise ValueError(
+            # Preserve the public configuration-validation exception contract.
+            raise ValueError(  # noqa: TRY004
                 "training_replay requires an explicit replay_work_unit mapping"
             )
         result = _json_copy(dict(value), label="replay_work_unit")
@@ -185,8 +182,7 @@ class FP4InferenceScalingController:
         size = result.get("size")
         if kind not in {"effective_tokens", "fixed_forward_batch"}:
             raise ValueError(
-                "replay_work_unit.kind must be effective_tokens or "
-                "fixed_forward_batch"
+                "replay_work_unit.kind must be effective_tokens or fixed_forward_batch"
             )
         if type(size) is not int or size <= 0:
             raise ValueError("replay_work_unit.size must be a positive integer")
@@ -209,9 +205,7 @@ class FP4InferenceScalingController:
 
     def _require_deterministic_runtime(self) -> None:
         training_modules = [
-            name or "<root>"
-            for name, module in self.model.named_modules()
-            if module.training
+            name or "<root>" for name, module in self.model.named_modules() if module.training
         ]
         if training_modules:
             raise RuntimeError(
@@ -224,8 +218,7 @@ class FP4InferenceScalingController:
             and torch.distributed.get_world_size() > 1
         ):
             raise RuntimeError(
-                "The deterministic FP4 inference scaling protocol requires "
-                "one process"
+                "The deterministic FP4 inference scaling protocol requires one process"
             )
 
     def reset_after_checkpoint_load(self) -> dict[str, Any]:
@@ -272,9 +265,7 @@ class FP4InferenceScalingController:
         self._require_deterministic_runtime()
         self._require_phase("weights_frozen")
         if self.activation_mode != "calibrated_frozen":
-            raise RuntimeError(
-                "Activation calibration is not used by current_tensor mode"
-            )
+            raise RuntimeError("Activation calibration is not used by current_tensor mode")
         if not isinstance(calibration_identity, Mapping) or not calibration_identity:
             raise ValueError("calibration_identity must be a non-empty mapping")
         self.calibration_identity = _json_copy(
@@ -368,9 +359,7 @@ class FP4InferenceScalingController:
         self._require_deterministic_runtime()
         self._require_phase("measuring")
         if self.activation_mode != "training_replay" or self.replay_work_unit is None:
-            raise RuntimeError(
-                "Work-unit advancement is only valid for training_replay mode"
-            )
+            raise RuntimeError("Work-unit advancement is only valid for training_replay mode")
         if type(effective_token_count) is not int or effective_token_count <= 0:
             raise ValueError("effective_token_count must be a positive integer")
         kind = self.replay_work_unit["kind"]
@@ -379,12 +368,12 @@ class FP4InferenceScalingController:
             raise ValueError(
                 f"Expected exactly {size} effective tokens, got {effective_token_count}"
             )
-        if kind == "fixed_forward_batch":
-            if input_ids.ndim < 1 or int(input_ids.shape[0]) != size:
-                raise ValueError(
-                    f"Expected fixed forward batch size {size}, got "
-                    f"shape {tuple(input_ids.shape)}"
-                )
+        if kind == "fixed_forward_batch" and (
+            input_ids.ndim < 1 or int(input_ids.shape[0]) != size
+        ):
+            raise ValueError(
+                f"Expected fixed forward batch size {size}, got shape {tuple(input_ids.shape)}"
+            )
 
         logical_step = len(self.training_replay_work_units) + 1
         if logical_step > 1:
@@ -392,8 +381,7 @@ class FP4InferenceScalingController:
                 replay = module.fp4_inference_scaling_report()["training_replay"]
                 if replay["last_consumed_step"] != logical_step - 1:
                     raise RuntimeError(
-                        f"FP4 module {name!r} did not consume replay step "
-                        f"{logical_step - 1}"
+                        f"FP4 module {name!r} did not consume replay step {logical_step - 1}"
                     )
         tensor_identity = _tensor_identity(input_ids)
         record = {
@@ -433,12 +421,10 @@ class FP4InferenceScalingController:
 
         self.assert_ready_for_measurement()
         module_reports = {
-            name: module.fp4_inference_scaling_report()
-            for name, module in self.modules
+            name: module.fp4_inference_scaling_report() for name, module in self.modules
         }
         frozen_references = {
-            name: report["frozen_global_amax"]
-            for name, report in module_reports.items()
+            name: report["frozen_global_amax"] for name, report in module_reports.items()
         }
         if self.activation_mode == "current_tensor":
             activation_calibration = None
@@ -451,9 +437,7 @@ class FP4InferenceScalingController:
         elif self.activation_mode == "calibrated_frozen":
             if self.calibration_identity is None:
                 raise RuntimeError("Missing calibrated activation-set identity")
-            ordered_records = [
-                record["record_sha256"] for record in self.calibration_batches
-            ]
+            ordered_records = [record["record_sha256"] for record in self.calibration_batches]
             activation_calibration = {
                 "identity": self.calibration_identity,
                 "identity_sha256": _canonical_sha256(self.calibration_identity),
@@ -462,9 +446,7 @@ class FP4InferenceScalingController:
                 "ordered_batch_record_sha256": ordered_records,
                 "ordered_batches_sha256": _canonical_sha256(ordered_records),
                 "aggregation": "maximum_amax_over_calibration_forwards",
-                "calibration_execution_scaling": (
-                    "current_tensor_per_operand_while_observing"
-                ),
+                "calibration_execution_scaling": ("current_tensor_per_operand_while_observing"),
             }
             activation_policy = {
                 "mode": "calibrated_frozen",
@@ -478,8 +460,7 @@ class FP4InferenceScalingController:
             if not self.training_replay_work_units:
                 raise RuntimeError("No training-replay work units were measured")
             module_replay = {
-                name: report["training_replay"]
-                for name, report in module_reports.items()
+                name: report["training_replay"] for name, report in module_reports.items()
             }
             final_step = len(self.training_replay_work_units)
             for name, replay in module_replay.items():
@@ -488,26 +469,20 @@ class FP4InferenceScalingController:
                     or replay["last_consumed_step"] != final_step
                 ):
                     raise RuntimeError(
-                        f"FP4 module {name!r} did not consume final replay step "
-                        f"{final_step}"
+                        f"FP4 module {name!r} did not consume final replay step {final_step}"
                     )
             work_unit_hashes = [
-                record["record_sha256"]
-                for record in self.training_replay_work_units
+                record["record_sha256"] for record in self.training_replay_work_units
             ]
             refresh_traces = {
-                name: replay["refresh_trace"]
-                for name, replay in module_replay.items()
+                name: replay["refresh_trace"] for name, replay in module_replay.items()
             }
-            final_caches = {
-                name: replay["cache"] for name, replay in module_replay.items()
-            }
+            final_caches = {name: replay["cache"] for name, replay in module_replay.items()}
             activation_calibration = None
             activation_policy = {
                 "mode": "training_replay",
                 "definition": (
-                    "cold delayed-amax replay refreshed at logical steps "
-                    "1, 51, 101, ..."
+                    "cold delayed-amax replay refreshed at logical steps 1, 51, 101, ..."
                 ),
                 "cache_reuse": True,
                 "order_sensitive": True,
@@ -520,9 +495,7 @@ class FP4InferenceScalingController:
                 "work_unit": self.replay_work_unit,
                 "work_unit_sha256": _canonical_sha256(self.replay_work_unit),
                 "evaluation_order": self.evaluation_order,
-                "evaluation_order_sha256": _canonical_sha256(
-                    self.evaluation_order
-                ),
+                "evaluation_order_sha256": _canonical_sha256(self.evaluation_order),
                 "logical_step_count": len(work_unit_hashes),
                 "ordered_work_unit_record_sha256": work_unit_hashes,
                 "ordered_work_units_sha256": _canonical_sha256(work_unit_hashes),
@@ -533,9 +506,7 @@ class FP4InferenceScalingController:
         protocol = {
             "schema": FP4_INFERENCE_SCALING_PROTOCOL_SCHEMA,
             "checkpoint_identity": self.checkpoint_identity,
-            "checkpoint_identity_sha256": _canonical_sha256(
-                self.checkpoint_identity
-            ),
+            "checkpoint_identity_sha256": _canonical_sha256(self.checkpoint_identity),
             "post_load_reset_count": self.reset_count,
             "training_step_or_cache_inherited": False,
             "distributed_scope": "single_process",
@@ -587,9 +558,7 @@ class FP4InferenceScalingController:
         )
         if "null" in torch_matmul_policies:
             raise RuntimeError("FP4 modules must attest the Torch matmul policy")
-        torch_matmul_policies = [
-            json.loads(record) for record in torch_matmul_policies
-        ]
+        torch_matmul_policies = [json.loads(record) for record in torch_matmul_policies]
         if scale_types in ({"E5M3"}, {"UE5M3"}):
             numeric_path = "quantized_ue5m3_fp4_decoded_torch"
         elif scale_types == {"E4M3"}:
@@ -601,9 +570,7 @@ class FP4InferenceScalingController:
             "numeric_path": numeric_path,
             "gemm_output_model": gemm_output_model,
             "torch_matmul_policies": torch_matmul_policies,
-            "torch_matmul_policies_sha256": _canonical_sha256(
-                torch_matmul_policies
-            ),
+            "torch_matmul_policies_sha256": _canonical_sha256(torch_matmul_policies),
             "native_hardware": False,
             "resolved_formats": formats,
             "resolved_formats_sha256": _canonical_sha256(formats),

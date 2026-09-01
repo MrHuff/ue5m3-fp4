@@ -2,16 +2,26 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
-import yaml
 
 from ue5m3_fp4.formats import E2M1, UE5M3, RoundingMode
 from ue5m3_fp4.recipe import OperandRole, UE5M3Recipe
+from ue5m3_fp4.recipes import (
+    RECIPE_RESOURCES,
+    available_recipes,
+    load_recipe_config,
+    read_recipe_text,
+    recipe_path,
+    recipe_resource,
+)
 
-
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_RECIPE_RESOURCES = (
+    "proposed_b16_d50.yaml",
+    "inference/calibrated_frozen.yaml",
+    "inference/current_tensor_d1.yaml",
+    "inference/training_replay_d50.yaml",
+)
 
 
 def test_proposed_recipe_has_explicit_numerical_controls() -> None:
@@ -25,13 +35,9 @@ def test_proposed_recipe_has_explicit_numerical_controls() -> None:
     assert not recipe.randomized_hadamard_transform
     assert recipe.rounding_for("activation") is RoundingMode.TIES_TO_EVEN
     assert recipe.rounding_for("weight") is RoundingMode.TIES_TO_EVEN
+    assert recipe.rounding_for("upstream_gradient") is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
     assert (
-        recipe.rounding_for("upstream_gradient")
-        is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
-    )
-    assert (
-        recipe.rounding_for("wgrad_upstream_gradient")
-        is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
+        recipe.rounding_for("wgrad_upstream_gradient") is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
     )
 
 
@@ -75,16 +81,23 @@ def test_recipe_mapping_round_trip_is_lossless() -> None:
         UE5M3Recipe.from_dict(bad)
 
 
-def test_checked_in_training_recipe_matches_code_default() -> None:
-    path = REPOSITORY_ROOT / "recipes" / "proposed_b16_d50.yaml"
-    assert UE5M3Recipe.from_yaml(path) == UE5M3Recipe.proposed()
+def test_packaged_recipe_inventory_is_complete() -> None:
+    assert RECIPE_RESOURCES == EXPECTED_RECIPE_RESOURCES
+    assert available_recipes() == EXPECTED_RECIPE_RESOURCES
+    for name in available_recipes():
+        assert recipe_resource(name).is_file()
+        assert read_recipe_text(name).startswith("# Copyright")
+
+
+def test_packaged_training_recipe_matches_code_default() -> None:
+    with recipe_path("proposed_b16_d50.yaml") as path:
+        assert UE5M3Recipe.from_yaml(path) == UE5M3Recipe.proposed()
 
 
 def test_inference_recipe_files_state_distinct_scale_lifecycles() -> None:
-    recipe_dir = REPOSITORY_ROOT / "recipes" / "inference"
-    current = yaml.safe_load((recipe_dir / "current_tensor_d1.yaml").read_text())
-    replay = yaml.safe_load((recipe_dir / "training_replay_d50.yaml").read_text())
-    calibrated = yaml.safe_load((recipe_dir / "calibrated_frozen.yaml").read_text())
+    current = load_recipe_config("inference/current_tensor_d1.yaml")
+    replay = load_recipe_config("inference/training_replay_d50.yaml")
+    calibrated = load_recipe_config("inference/calibrated_frozen.yaml")
 
     assert current["activation_reference"]["policy"] == "current_tensor"
     assert current["activation_reference"]["refresh_interval_forwards"] == 1
@@ -104,12 +117,16 @@ def test_inference_recipe_files_state_distinct_scale_lifecycles() -> None:
 
 
 def test_public_configs_do_not_contain_internal_locations_or_credentials() -> None:
-    text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((REPOSITORY_ROOT / "recipes").rglob("*.yaml"))
-    ).lower()
+    text = "\n".join(read_recipe_text(name) for name in available_recipes()).lower()
     for forbidden in ("s3://", "/workspace/", "/volt/", "token:", "password:"):
         assert forbidden not in text
+
+
+def test_packaged_recipe_lookup_rejects_unknown_or_non_string_names() -> None:
+    with pytest.raises(ValueError, match="unknown packaged recipe"):
+        recipe_resource("../pyproject.toml")
+    with pytest.raises(TypeError, match="must be a string"):
+        recipe_resource(None)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("target", [True, float("inf"), float("nan")])

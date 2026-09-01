@@ -62,12 +62,8 @@ def test_stochastic_fast_uses_exact_8bit_midpoints_at_boundary() -> None:
 
 def test_stochastic_fast_exhaustive_8bit_distribution_is_unbiased_on_grid() -> None:
     random_bits = torch.arange(256, dtype=torch.int32)
-    halfway = stochastic_8bit_midpoint(
-        torch.full((256,), 0.75), random_bits=random_bits
-    )
-    quarter = stochastic_8bit_midpoint(
-        torch.full((256,), 0.625), random_bits=random_bits
-    )
+    halfway = stochastic_8bit_midpoint(torch.full((256,), 0.75), random_bits=random_bits)
+    quarter = stochastic_8bit_midpoint(torch.full((256,), 0.625), random_bits=random_bits)
     assert int((halfway == 1.0).sum()) == 128
     assert int((quarter == 1.0).sum()) == 64
     assert halfway.mean().item() == pytest.approx(0.75)
@@ -76,12 +72,8 @@ def test_stochastic_fast_exhaustive_8bit_distribution_is_unbiased_on_grid() -> N
 
 def test_stochastic_fast_generator_is_reproducible() -> None:
     values = torch.linspace(0.51, 0.99, 128)
-    first = stochastic_8bit_midpoint(
-        values, generator=torch.Generator().manual_seed(1729)
-    )
-    second = stochastic_8bit_midpoint(
-        values, generator=torch.Generator().manual_seed(1729)
-    )
+    first = stochastic_8bit_midpoint(values, generator=torch.Generator().manual_seed(1729))
+    second = stochastic_8bit_midpoint(values, generator=torch.Generator().manual_seed(1729))
     torch.testing.assert_close(first, second)
 
 
@@ -210,9 +202,7 @@ def test_invalid_rounding_and_unsigned_negative_input_fail_loudly() -> None:
     with pytest.raises(ValueError, match="cannot represent negative"):
         round_to_format(torch.tensor([-1.0]), UE5M3)
     with pytest.raises(ValueError, match="same shape"):
-        stochastic_8bit_midpoint(
-            torch.tensor([0.75, 0.75]), random_bits=torch.tensor([1])
-        )
+        stochastic_8bit_midpoint(torch.tensor([0.75, 0.75]), random_bits=torch.tensor([1]))
 
 
 @pytest.mark.parametrize("target", [True, float("inf"), float("nan")])
