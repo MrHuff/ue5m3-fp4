@@ -9,9 +9,74 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
+import torch.distributed as dist
 from torch import Tensor
 
 from ue5m3_fp4.recipe import OperandRole, UE5M3Recipe
+
+
+def sample_global_amax(tensor: Tensor, *, label: str) -> Tensor:
+    """Sample a finite FP32 amax and synchronize it across the default group.
+
+    The reported training recipes use a global per-tensor reference. When a
+    distributed process group has more than one rank, a local maximum would
+    make each rank quantize with a different tensor scale. The scalar MAX
+    collective below matches the recovered training implementation's enabled
+    global-amax synchronization path.
+    """
+
+    if not isinstance(tensor, Tensor):
+        raise TypeError("tensor must be a torch.Tensor")
+    if not isinstance(label, str) or not label:
+        raise ValueError("label must be a non-empty string")
+    if not tensor.is_floating_point():
+        raise TypeError("tensor must have a floating-point dtype")
+    if tensor.numel() == 0:
+        raise ValueError(f"cannot sample {label} from an empty tensor")
+    if tensor.device.type == "meta":
+        raise RuntimeError(f"cannot sample {label} from a meta tensor")
+
+    value = tensor.detach().to(dtype=torch.float32).abs().amax()
+    # A sharded DTensor reduction can produce a scalar DTensor with a partial
+    # MAX placement. Its local scalar is the correct input to the explicit
+    # default-process-group MAX below.
+    to_local = getattr(value, "to_local", None)
+    if callable(to_local):
+        value = to_local()
+    value = value.to(dtype=torch.float32).reshape(())
+    if not bool(torch.isfinite(value)):
+        raise ValueError(f"cannot sample {label} from non-finite values")
+
+    if not dist.is_available() or not dist.is_initialized():
+        return value
+    try:
+        world_size = dist.get_world_size()
+    except (RuntimeError, ValueError) as error:
+        raise RuntimeError(f"cannot determine process-group size for {label}") from error
+    if world_size < 1:
+        raise RuntimeError(f"process-group size for {label} must be positive, got {world_size}")
+    if world_size == 1:
+        return value
+
+    try:
+        backend = str(dist.get_backend()).lower()
+    except (RuntimeError, ValueError) as error:
+        raise RuntimeError(f"cannot determine collective backend for {label}") from error
+    if "nccl" in backend and value.device.type != "cuda":
+        raise RuntimeError(
+            f"global {label} synchronization uses NCCL but its scalar is on "
+            f"{value.device.type!r}, not CUDA"
+        )
+    synchronized = value.clone()
+    try:
+        dist.all_reduce(synchronized, op=dist.ReduceOp.MAX)
+    except (RuntimeError, ValueError) as error:
+        raise RuntimeError(
+            f"failed to synchronize global {label} with a MAX collective"
+        ) from error
+    if not bool(torch.isfinite(synchronized)):
+        raise RuntimeError(f"global {label} MAX collective returned a non-finite value")
+    return synchronized
 
 
 @dataclass(slots=True)
@@ -64,15 +129,7 @@ class TrainingScaleState:
 
     @staticmethod
     def _sample_amax(tensor: Tensor) -> Tensor:
-        if not isinstance(tensor, Tensor):
-            raise TypeError("tensor must be a torch.Tensor")
-        if not tensor.is_floating_point():
-            raise TypeError("tensor must have a floating-point dtype")
-        if tensor.numel() == 0:
-            raise ValueError("cannot sample amax from an empty tensor")
-        if not bool(torch.isfinite(tensor).all()):
-            raise ValueError("cannot sample amax from non-finite values")
-        return tensor.detach().abs().amax().to(dtype=torch.float32).reshape(())
+        return sample_global_amax(tensor, label="training operand amax")
 
     def reference(self, role: str, module_name: str, tensor: Tensor) -> Tensor:
         """Return the held tensor amax, refreshing it when D steps elapsed."""
@@ -159,4 +216,4 @@ class TrainingScaleState:
         }
 
 
-__all__ = ["TrainingScaleState"]
+__all__ = ["TrainingScaleState", "sample_global_amax"]

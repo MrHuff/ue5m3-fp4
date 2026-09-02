@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import torch
 
-from ue5m3_fp4.nn.linear import UE5M3Linear
+from ue5m3_fp4.nn.linear import LinearBackend, UE5M3Linear, normalize_linear_backend
 from ue5m3_fp4.recipe import UE5M3Recipe
 from ue5m3_fp4.scaling.training import TrainingScaleState
 
@@ -44,6 +44,7 @@ def convert_linear_modules(
     *,
     recipe: UE5M3Recipe | None = None,
     scale_state: TrainingScaleState | None = None,
+    backend: str | LinearBackend = LinearBackend.PORTABLE,
     selector: LinearSelector | None = None,
 ) -> tuple[ConversionRecord, ...]:
     """Replace selected child linears in-place and return exact coverage.
@@ -71,6 +72,7 @@ def convert_linear_modules(
     if scale_state is not None and scale_state.recipe != recipe:
         raise ValueError("scale_state.recipe must match recipe")
     scale_state = scale_state or TrainingScaleState(recipe)
+    resolved_backend = normalize_linear_backend(backend)
     if selector is None:
         raise ValueError(
             "selector is required; pass select_all_linears explicitly to "
@@ -127,6 +129,7 @@ def convert_linear_modules(
             module,
             recipe=recipe,
             scale_state=scale_state,
+            backend=resolved_backend,
             module_name=module_name,
         )
         replacement.train(module.training)

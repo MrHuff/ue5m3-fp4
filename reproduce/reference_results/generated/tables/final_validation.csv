@@ -1,0 +1,8 @@
+trajectory_key,label,step,nll,percent_nll_reduction_vs_bf16
+bf16,BF16,30000,2.27834172074,0
+ue5m3_te_recipe,"UE5M3 with TE settings, D=1",30000,2.30375517298,-1.1154363722
+ue5m3_proposed_b16,"Proposed UE5M3, B=16, D=50",30000,2.32230482076,-1.92960957609
+ue5m3_proposed_b32,"Proposed UE5M3, B=32, D=50",30000,2.33720894782,-2.58377514385
+ue5m3_proposed_torch,"UE5M3 Torch control, B=16, D=50",30000,2.32899747998,-2.22336091099
+nvfp4_te_recipe,"Transformer Engine NVFP4, D=1",30000,2.32592135043,-2.08834474909
+nvfp4_proposed_settings,"Native NVFP4, no RHT/all linears, D=1",30000,2.45467621515,-7.73959818248

@@ -1,0 +1,120 @@
+schema: ue5m3_fp4_public_quantized_olmes_protocol
+version: 1
+historical_source_manifest_sha256: 05841640178504e1607cc8cd52a70a6e524855da67c6bf2767f73fe30bd20a4b
+note: >-
+  This is a public, storage-neutral transcription of the frozen likelihood
+  sweep. Supply a request bundle whose hashes match those below.
+
+checkpoint:
+  step: 30000
+  root: REPLACE_WITH_CHECKPOINT_ROOT
+  resolved_training_config_required: true
+
+request_bundle:
+  manifest_path: REPLACE_WITH_OLMES_REQUEST_BUNDLE_MANIFEST
+  archive_path: REPLACE_WITH_OLMES_REQUEST_BUNDLE_ARCHIVE
+  manifest_sha256: b7cd708300b7b63edd45e4d973de7195b2c98384f1a9b0773f49c5a8d0e47898
+  archive_sha256: 0bf27af57eb1bb1b98872c4af12d419498652d935a6b745cc7ec4ecdb32d7483
+  payload_inventory_sha256: 5af34a3cc3ee849ee6a0e4b13597f782cd23881eb63799fcb11270d47c9e953a
+  request_inventory_sha256: 613955cc0ca3a1798f85c3ce60edf422eee66ed4c0566242f0b59c7211a95271
+  leaf_tasks: 146
+  likelihood_requests: 368932
+  task_documents: 79371
+  request_types: [loglikelihood]
+
+suites:
+  - core_9mcqa::olmes
+  - mmlu::olmes
+  - mmlu_pro:mc::none
+
+execution:
+  task_order: ascending frozen request-bundle task_index 0 through 145
+  within_task_order: >-
+    pinned HFLM_Verbose collator key ordered by negative concatenated-token
+    count then concatenated token IDs, stable for ties
+  batch_size: 8
+  partial_final_batch: allowed only at the end of an individual leaf task
+  expected_forward_work_units: 46136
+  work_unit: one top-level NemotronHForCausalLM forward on one consecutive collator batch
+  gpus: 1
+  workers: 1
+  processes: 1
+  logits_cache: false
+  maximum_length: 2048
+  random_subsample_seed: 20260830
+  global_limit: null
+  preserve_official_per_task_limits: true
+
+d50_inference:
+  applicable_configurations:
+    - ue5m3_proposed_b16
+    - ue5m3_proposed_b32
+    - ue5m3_torch_control
+  initial_activation_cache: cold after checkpoint load
+  checkpoint_cache_inherited: false
+  weight_amax: sampled once after load and frozen
+  refresh_interval_forward_work_units: 50
+  one_based_refresh_work_units: 1, 51, 101, ...
+  counter_scope: one entire 146-task process
+  reset_between_tasks: false
+  warning: >-
+    This is a deterministic OLMES forward-batch replay, not an optimizer-step
+    replay and not a reconstruction of an unsaved training cache.
+
+task_matrix:
+  - configuration: bf16
+    protocol: learned_weight_bf16
+    fp4_quantization_applied: false
+  - configuration: ue5m3_proposed_b16
+    protocol: fp4_activation_cold_replay_d50
+    fp4_quantization_applied: true
+  - configuration: ue5m3_proposed_b32
+    protocol: fp4_activation_cold_replay_d50
+    fp4_quantization_applied: true
+  - configuration: ue5m3_torch_control
+    protocol: fp4_activation_cold_replay_d50
+    fp4_quantization_applied: true
+  - configuration: native_transformer_engine_nvfp4
+    protocol: native_transformer_engine_current_tensor_d1
+    fp4_quantization_applied: true
+  - configuration: native_nvfp4_no_rht_all_linears
+    protocol: native_transformer_engine_current_tensor_d1
+    fp4_quantization_applied: true
+  - configuration: ue5m3_transformer_engine_settings
+    protocol: fp4_current_tensor_d1
+    fp4_quantization_applied: true
+
+historical_controlled_runtime:
+  container_reference: ghcr.io/mrhuff/fp4-training:v12
+  container_digest: sha256:dfe6f1cd1cad8701a5bf10cd9730dbea18c0b21e757a0393f141655894fc29af
+  container_publicly_distributed: false
+  container_note: historical provenance only; use reproduce/Dockerfile for public reruns
+  runtime_wheel_manifest_sha256: b2418f4f7c44d6336b3f8ef42242b9ab7294c2f09ff44638a546a7f615e0ec18
+  torchtitan_commit: e37f83f58b35fdbceed9a5916b3490c16247ac9c
+  torchtitan_source_ledger_sha256: fd44a561d6a646a06785c51d49a0ad1a488348d752b6b2a9e1b4f29dff82a49c
+  historical_olmes_commit: 3d80ebb0f08706a5d2dd3fb0be72100735b5f5c6
+  historical_olmes_tree: 6403093f39b09e3dd6980bee7d60863a7714de8f
+  olmes_wheel_sha256: a3b8f44a62a8c299b6283f0125bb3cb289f3032b5da8a0d526d03df77bb9b559
+  public_olmes_reconstruction:
+    repository: https://github.com/allenai/olmes.git
+    commit: 8e2743734066b073c5d8498d1b8220f67a21a2d6
+    tree: 991940b9a2b37f8491ff29d1d22487b209fe750f
+    selected_likelihood_tasks_use_chat_format: false
+    compatibility_overlay: colon-free request and result filenames
+    scope: >-
+      The 146 selected task definitions, model adapter, and likelihood path are
+      unchanged from this public ancestor. The release restores the historical
+      filename behavior and exact dependency pins without relying on a
+      non-public Git remote.
+  requirements_lock_sha256: bf4d73c947072824f165b10b16f9624e358cd693ac4eb889bc385d81697eb8f6
+  transformer_engine_version: 2.16.0.dev0+01aef4fc
+  transformer_engine_commit: 01aef4fc721bd12fd09cd56d53a314aee1b953d6
+
+reporting:
+  reference_configuration: bf16
+  compare_paired_task_documents: true
+  distinguish_quantized_inference_from_bf16_export_evaluation: true
+  independent_training_seeds_per_configuration: 1
+  prohibited_inference: >-
+    Multiple tasks, requests, or checkpoints do not constitute independent
+    training runs and must not be used to claim run-to-run significance.

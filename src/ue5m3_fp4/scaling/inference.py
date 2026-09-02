@@ -560,7 +560,14 @@ class FP4InferenceScalingController:
             raise RuntimeError("FP4 modules must attest the Torch matmul policy")
         torch_matmul_policies = [json.loads(record) for record in torch_matmul_policies]
         if scale_types in ({"E5M3"}, {"UE5M3"}):
-            numeric_path = "quantized_ue5m3_fp4_decoded_torch"
+            if gemm_output_model == (
+                "encoded_operand_k64_issue_rz_bf16_gemm_final_snap_1_over_1024"
+            ):
+                numeric_path = "quantized_ue5m3_fp4_probe_matched_k64_issue_rz"
+            elif gemm_output_model == "encoded_operand_torch_fp32_matmul":
+                numeric_path = "quantized_ue5m3_fp4_encoded_torch_fp32"
+            else:
+                numeric_path = "quantized_ue5m3_fp4_decoded_torch"
         elif scale_types == {"E4M3"}:
             numeric_path = "quantized_nvfp4_custom_emulator_decoded_torch"
         else:

@@ -1,0 +1,97 @@
+# HISTORICAL SPECIFICATION, not directly runnable by the public TorchTitan plugin.
+# PUBLIC RECONSTRUCTION, not a verbatim historical config-rank0.
+# Requires the pinned Transformer Engine/Blackwell runtime in the manifest.
+
+[job]
+dump_folder = "REPLACE_WITH_OUTPUT_DIRECTORY/nvfp4-te"
+remote_folder = ""
+description = "Nemotron-H 8B native Transformer Engine NVFP4 recipe"
+
+[profiling]
+enable_profiling = false
+save_traces_folder = "profile_trace"
+profile_freq = 10000
+
+[metrics]
+log_freq = 25
+enable_tensorboard = true
+save_tb_folder = "tb"
+distributed_mode = "local_rank_0"
+
+[debug]
+seed = 42
+
+[model]
+name = "nemotron_h_gc"
+flavor = "8B_paper"
+hf_assets_path = "REPLACE_WITH_PINNED_NEMOTRON_H_ASSETS"
+use_flex_attn = false
+converters = ["te_fp4"]
+
+[optimizer]
+name = "AdamW"
+lr = 0.0008
+beta1 = 0.9
+beta2 = 0.95
+weight_decay = 0.1
+
+[training]
+dtype = "bfloat16"
+local_batch_size = 1
+global_batch_size = 768
+seq_len = 8192
+max_norm = 1.0
+steps = 30000
+dataset = "mosaic/shuffled-olmo-mix-1124"
+dataset_path = '{"streams":[{"name":"dclm","path":"REPLACE_WITH_DCLM_MOSAIC_STREAM","proportion":0.82},{"name":"olmo-no-dclm","path":"REPLACE_WITH_OLMO_NO_DCLM_MOSAIC_STREAM","proportion":0.18}]}'
+load_dataset_kwargs = '{"split":"train","shuffle":false,"num_workers":2}'
+dataset_node_distribution = "shard"
+enable_cce = false
+compile_ce = true
+compile = false
+
+[compile]
+enable = false
+components = ["model", "loss"]
+
+[lr_scheduler]
+warmup_steps = 0
+decay_ratio = 0.15
+decay_type = "linear"
+min_lr_factor = 0.01
+
+[parallelism]
+pipeline_parallel_degree = 1
+data_parallel_replicate_degree = 1
+data_parallel_shard_degree = -1
+tensor_parallel_degree = 1
+
+[checkpoint]
+enable = true
+folder = "checkpoint"
+interval = 2500
+keep_latest_k = 0
+export_dtype = "float32"
+async_mode = "async"
+
+[activation_checkpoint]
+mode = "none"
+selective_ac_option = "op"
+
+[te_fp4]
+mlp_recipe = "NVFP4"
+attn_recipe = "NVFP4"
+exclude_last_n_layers = 8
+exclude_qkv = false
+quantize_mamba = true
+disable_rht = false
+disable_stochastic_rounding = false
+disable_2d_quantization = false
+encode = false
+delayed_amax_interval = 1
+delayed_amax_paths = "activations,weights,gradients"
+verbose = true
+
+[comm]
+init_timeout_seconds = 900
+train_timeout_seconds = 900

@@ -214,13 +214,27 @@ class UE5M3Recipe:
             raise TypeError("two_dimensional_weights must be bool")
         if type(self.randomized_hadamard_transform) is not bool:
             raise TypeError("randomized_hadamard_transform must be bool")
-        if self.randomized_hadamard_transform:
-            raise ValueError("this portable recipe does not implement RHT")
         object.__setattr__(self, "scale_target_overrides", tuple(self.scale_target_overrides))
         if any(
             not isinstance(item, ScaleTargetOverride) for item in self.scale_target_overrides
         ):
             raise TypeError("scale_target_overrides must contain ScaleTargetOverride values")
+        if self.randomized_hadamard_transform:
+            exact_te_settings = (
+                self.block_size == 16
+                and float(self.scale_target) == 448.0
+                and self.delayed_scale_interval == 1
+                and self.activation_rounding is RoundingMode.TIES_TO_EVEN
+                and self.weight_rounding is RoundingMode.TIES_TO_EVEN
+                and self.upstream_gradient_rounding is RoundingMode.STOCHASTIC_8BIT_MIDPOINT
+                and self.two_dimensional_weights
+                and not self.scale_target_overrides
+            )
+            if not exact_te_settings:
+                raise ValueError(
+                    "this portable recipe does not implement RHT for arbitrary "
+                    "controls; use UE5M3Recipe.transformer_engine_settings()"
+                )
 
     @classmethod
     def proposed(cls) -> UE5M3Recipe:
@@ -250,6 +264,34 @@ class UE5M3Recipe:
             ),
         )
 
+    @classmethod
+    def transformer_engine_settings(cls) -> UE5M3Recipe:
+        """Return the reported UE5M3 comparator with TE-style controls.
+
+        The transform flag has a deliberately narrow meaning in the public
+        linear implementation: a fixed, normalized B=16 Hadamard transform is
+        applied to the two columnwise operands used by the weight-gradient
+        GEMM.  Forward and data-gradient GEMM operands remain untransformed,
+        matching Transformer Engine's NVFP4 operand placement. Tensor amaxes
+        are sampled from the current operand on every step (D=1).
+        """
+
+        return cls(
+            name="ue5m3_b16_transformer_engine_settings_d1",
+            block_size=16,
+            payload_format=E2M1,
+            scale_format=UE5M3,
+            scale_target=448.0,
+            delayed_scale_interval=1,
+            activation_rounding=RoundingMode.TIES_TO_EVEN,
+            weight_rounding=RoundingMode.TIES_TO_EVEN,
+            upstream_gradient_rounding=RoundingMode.STOCHASTIC_8BIT_MIDPOINT,
+            scale_rounding=RoundingMode.TIES_TO_EVEN,
+            two_dimensional_weights=True,
+            randomized_hadamard_transform=True,
+            scale_target_overrides=(),
+        )
+
     @staticmethod
     def normalize_role(role: str | OperandRole) -> OperandRole:
         return normalize_role(role)
@@ -267,9 +309,10 @@ class UE5M3Recipe:
     def scale_target_for(self, role: str | OperandRole, module_name: str) -> float:
         """Resolve the tensor-scale target for one role and module.
 
-        The T=2,048 overlay applies only to dY in the weight-gradient GEMM for
-        ``mixer.down_proj`` in Nemotron layers 44--51.  All other operands use
-        the recipe-wide T=448 target.
+        The T=2,048 overlay selects dY in the weight-gradient GEMM for
+        ``mixer.down_proj`` over the inclusive zero-based range 44--51. Only
+        layers 45, 47, 49, and 51 contain that applicable MLP projection. All
+        other operands use the recipe-wide T=448 target.
         """
 
         normalized = normalize_role(role)

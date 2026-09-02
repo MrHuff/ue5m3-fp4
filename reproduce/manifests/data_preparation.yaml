@@ -1,0 +1,71 @@
+schema: ue5m3_fp4_public_olmo_mix_1124_preparation
+version: 1
+source:
+  huggingface_dataset: allenai/olmo-mix-1124
+  revision: 8162bd79c6dc4fea470506531a8d791badc06b4b
+  split: train
+  verification_mode: no_checks
+
+raw_sharding:
+  shard_count: 32
+  selected_columns: [text, id, source_ds]
+  no_dclm:
+    component_order:
+      - arxiv
+      - starcoder
+      - wiki
+      - pes2o
+      - open-web-math
+      - algebraic-stack
+    per_component_shard_method: huggingface Dataset.shard with contiguous=false
+    per_output_shard_operations:
+      - Select the same zero-based shard index from each component.
+      - Add source_ds equal to the component name.
+      - Concatenate components in component_order.
+      - Shuffle the concatenated shard with seed 42.
+      - Select text, id, and source_ds.
+      - Flatten indices and save the shard.
+  dclm:
+    component: dclm
+    shard_method: huggingface Dataset.shard with contiguous=true
+    shuffle: false
+    operations:
+      - Select the zero-based contiguous shard index.
+      - Add source_ds=dclm.
+      - Select text, id, and source_ds.
+      - Save the shard.
+
+training_streams:
+  physical_merge: false
+  streams:
+    - name: dclm
+      path: REPLACE_WITH_PREPARED_DCLM_STREAM
+      proportion: 0.82
+    - name: olmo-no-dclm
+      path: REPLACE_WITH_PREPARED_NO_DCLM_STREAM
+      proportion: 0.18
+
+runtime_document_packing:
+  performed_during_training_iteration: true
+  tokenizer_asset: REPLACE_WITH_PINNED_NEMOTRON_H_TOKENIZER
+  per_document:
+    text_column: text
+    add_bos: true
+    add_eos: true
+  public_dataloader_workers: 0
+  persistent_dataset_token_buffer: true
+  window_tokens: 8193
+  input_tokens: first 8192 tokens of each window
+  label_tokens: final 8192 tokens of each window, shifted by one
+  window_stride: 8193
+  leftover_behavior: retained across documents and serialized in dataloader checkpoints
+
+reproduction_level:
+  method_reproduction: true
+  byte_exact_historical_mds_reproduction: false
+  reason: >-
+    The original MDS indices, shard-object inventory, exact preprocessing
+    dependency lock, and complete source-cache/file ordering were not recovered
+    as public artifacts. The pinned Hugging Face revision and transformations
+    reproduce the documented method, but newly written MDS boundaries and
+    sample order must be treated as a new dataset identity.

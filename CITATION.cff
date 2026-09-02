@@ -1,24 +1,28 @@
 cff-version: 1.2.0
 message: >-
-  If you use this software, please cite the accompanying report and identify
-  the software version or Git commit used.
-title: "UE5M3 FP4: Portable PyTorch Reference Implementation"
+  If you use this software, please cite the accompanying language model
+  pretraining report and record software version 0.2.0a0 or the exact Git
+  commit used.
+title: "UE5M3 FP4: Language Model Pretraining Software"
 type: software
-version: "0.1.0a0"
+version: "0.2.0a0"
 date-released: 2026-09-02
 license: Apache-2.0
 repository-code: "https://github.com/MrHuff/ue5m3-fp4"
 url: "https://github.com/MrHuff/ue5m3-fp4"
 abstract: >-
-  A portable decoded-PyTorch reference for E2M1 FP4 with unsigned-E5M3 block
-  scales, delayed tensor scaling, selective stochastic rounding, and explicit
-  post-load quantized-inference scale lifecycles.
+  The released numerical reference, CUDA/Triton fake-quantization and
+  probe-matched GEMM path, public TorchTitan method-reproduction integration,
+  and audited result artifacts for UE5M3 FP4 language model pretraining. The
+  public data pipeline reconstructs the method but not the unavailable
+  byte-identical historical data and evaluation order.
 keywords:
   - FP4
   - UE5M3
   - block scaling
+  - language model
   - low-precision training
-  - fake quantization
+  - quantization
 authors:
   - family-names: Hu
     given-names: Robert
@@ -33,7 +37,7 @@ contact:
     email: robert.stats.hu@gmail.com
 preferred-citation:
   type: article
-  title: "UE5M3 FP4 Block Scaling for Stable Language-Model Pretraining"
+  title: "UE5M3 FP4 Block Scaling for Stable Language Model Pretraining"
   authors:
     - family-names: Hu
       given-names: Robert

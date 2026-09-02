@@ -3,9 +3,10 @@
 
 import pytest
 import torch
+import torch.distributed as dist
 
 from ue5m3_fp4.recipe import UE5M3Recipe
-from ue5m3_fp4.scaling.training import TrainingScaleState
+from ue5m3_fp4.scaling.training import TrainingScaleState, sample_global_amax
 
 
 def test_reference_requires_an_explicit_logical_step() -> None:
@@ -113,3 +114,77 @@ def test_reference_rejects_empty_nonfinite_and_unnamed_operands() -> None:
         state.reference("activation", "module", torch.empty(0))
     with pytest.raises(ValueError, match="non-finite"):
         state.reference("activation", "module", torch.tensor([float("nan")]))
+
+
+def test_amax_is_local_without_an_initialized_process_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dist, "is_available", lambda: True)
+    monkeypatch.setattr(dist, "is_initialized", lambda: False)
+
+    sampled = sample_global_amax(
+        torch.tensor([-7.0, 2.0], dtype=torch.bfloat16),
+        label="test operand",
+    )
+
+    assert sampled.dtype is torch.float32
+    assert sampled.shape == ()
+    assert sampled.item() == 7.0
+
+
+def test_training_refresh_uses_global_max_and_holds_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collective_calls: list[tuple[torch.Tensor, object]] = []
+    monkeypatch.setattr(dist, "is_available", lambda: True)
+    monkeypatch.setattr(dist, "is_initialized", lambda: True)
+    monkeypatch.setattr(dist, "get_world_size", lambda: 2)
+    monkeypatch.setattr(dist, "get_backend", lambda: "gloo")
+
+    def fake_all_reduce(value: torch.Tensor, *, op: object) -> None:
+        collective_calls.append((value.clone(), op))
+        value.fill_(11.0)
+
+    monkeypatch.setattr(dist, "all_reduce", fake_all_reduce)
+    state = TrainingScaleState(UE5M3Recipe.proposed())
+
+    state.begin_step(1)
+    first = state.reference("activation", "layers.0.mixer.in_proj", torch.tensor([3.0]))
+    state.begin_step(2)
+    held = state.reference("activation", "layers.0.mixer.in_proj", torch.tensor([99.0]))
+
+    assert first.item() == 11.0
+    assert held.item() == 11.0
+    assert len(collective_calls) == 1
+    assert collective_calls[0][0].item() == 3.0
+    assert collective_calls[0][1] == dist.ReduceOp.MAX
+
+
+def test_single_rank_process_group_does_not_issue_collective(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dist, "is_available", lambda: True)
+    monkeypatch.setattr(dist, "is_initialized", lambda: True)
+    monkeypatch.setattr(dist, "get_world_size", lambda: 1)
+
+    def unexpected_all_reduce(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("a single-rank process group needs no collective")
+
+    monkeypatch.setattr(dist, "all_reduce", unexpected_all_reduce)
+
+    assert sample_global_amax(torch.tensor([-5.0]), label="test operand").item() == 5.0
+
+
+def test_global_amax_rejects_invalid_world_size_and_nccl_cpu_scalar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dist, "is_available", lambda: True)
+    monkeypatch.setattr(dist, "is_initialized", lambda: True)
+    monkeypatch.setattr(dist, "get_world_size", lambda: 0)
+    with pytest.raises(RuntimeError, match="must be positive"):
+        sample_global_amax(torch.ones(1), label="test operand")
+
+    monkeypatch.setattr(dist, "get_world_size", lambda: 2)
+    monkeypatch.setattr(dist, "get_backend", lambda: "nccl")
+    with pytest.raises(RuntimeError, match="NCCL.*not CUDA"):
+        sample_global_amax(torch.ones(1), label="test operand")

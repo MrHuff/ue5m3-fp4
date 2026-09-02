@@ -1,0 +1,53 @@
+{
+  "formula": {
+    "olmes_percentage_points": "candidate_score_percent - BF16_score_percent",
+    "validation_percent": "100 * (BF16_NLL - candidate_NLL) / BF16_NLL"
+  },
+  "inputs": [
+    {
+      "file": "validation_metrics.csv",
+      "sha256": "0b2d4eb383c6a485c0dc97cd1c083570046c22330916805c978d5c2974a8bf13"
+    },
+    {
+      "file": "olmes_aggregate_scores.csv",
+      "sha256": "1efc2c27d4e2ce49d0f67f7fccff1b8c61352148d8e623d438d60bc3e61a2140"
+    }
+  ],
+  "outputs": [
+    {
+      "bytes": 36081,
+      "file": "figures/validation_loss_and_percent.pdf",
+      "sha256": "23d559e18408173dbbd7415c9a86e3bf49253f9634d1c84b14c4be8f50a6ace0"
+    },
+    {
+      "bytes": 269332,
+      "file": "figures/validation_loss_and_percent.png",
+      "sha256": "b4a0b0e3ed053c2325c9adb033f9351de0d8ebc92c9aea2046725f1771929ed0"
+    },
+    {
+      "bytes": 610,
+      "file": "tables/final_validation.csv",
+      "sha256": "c693def64a6216bb08e97fffc4b78b96f935a67487222017ca7202f079a3cb08"
+    },
+    {
+      "bytes": 23731,
+      "file": "figures/olmes_bf16_differences.pdf",
+      "sha256": "831e85175aa21dbfb2dd497d4977c412729cfcbc1ac46b29231e817ecdb46163"
+    },
+    {
+      "bytes": 114465,
+      "file": "figures/olmes_bf16_differences.png",
+      "sha256": "b34ef364c4c3192a8905296d775cb2261613ef330730b59f1d9eb87f077ddb4a"
+    },
+    {
+      "bytes": 1858,
+      "file": "tables/olmes_scores_and_deltas.csv",
+      "sha256": "06a1b198324b074b3a944e53e2b50c35bb5eb80965ec48bf469715ded6708b43"
+    }
+  ],
+  "runtime": {
+    "matplotlib": "3.10.7",
+    "python": "3.12.3"
+  },
+  "schema": "ue5m3_fp4_rendered_reference_artifacts_v1"
+}

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize test dependencies
+        run: git submodule update --init third_party/torchtitan third_party/olmes
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package and test tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev,results]'
+
+      - name: Static checks
+        run: |
+          ruff check .
+          ruff format --check .
+          python reproduce/scripts/audit_public_tree.py --history
+          PYTHONPATH=src python reproduce/scripts/validate_bundle.py
+
+      - name: CPU and provenance tests
+        run: PYTHONPATH=src:third_party/torchtitan python -m pytest
+
+      - name: Build distributions
+        run: python -m build

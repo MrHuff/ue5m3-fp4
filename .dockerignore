@@ -1,0 +1,24 @@
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.venv/
+build/
+dist/
+*.egg-info/
+
+# Never send locally generated weights, checkpoints, or credentials into the
+# Docker build context.
+**/*.safetensors
+**/*.ckpt
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.gguf
+**/pytorch_model*.bin
+**/model*.bin
+**/checkpoint/
+**/checkpoints/
+**/.env
+**/.env.*
+!.env.example

@@ -7,10 +7,11 @@ from ue5m3_fp4.nn.convert import (
     exclude_lm_head,
     select_all_linears,
 )
-from ue5m3_fp4.nn.linear import UE5M3Linear
+from ue5m3_fp4.nn.linear import LinearBackend, UE5M3Linear
 
 __all__ = [
     "ConversionRecord",
+    "LinearBackend",
     "UE5M3Linear",
     "convert_linear_modules",
     "exclude_lm_head",

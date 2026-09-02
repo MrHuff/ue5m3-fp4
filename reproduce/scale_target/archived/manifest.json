@@ -1,0 +1,20 @@
+{
+  "reference_render_sha256": {
+    "pdf": "fd6d42dae417c7708e9c8ac485032909ac999d4ac35c81096fde647876c6307b",
+    "png": "219cfb96b690dba693912e56c3b7271176fb595a650b32dc11987407e374214e"
+  },
+  "schema": "ue5m3_fp4_public_scale_target_archive_manifest_v1",
+  "scope": "Storage-neutral copies of the numerical histograms used by the report; model weights and token data are not included.",
+  "snapshots": {
+    "bf16": {
+      "archive_file": "bf16.json",
+      "archive_sha256": "a980b78a3445ddb72efd4f06f356a11419fd022d02868f8a4dfbac87a2b528a7",
+      "source_sha256": "8637d66dc9b53b8b29ceea068a16afba1e43d0f208049cd500da27205f4175c2"
+    },
+    "ue5m3_proposed_b16": {
+      "archive_file": "ue5m3_proposed_b16.json",
+      "archive_sha256": "a21d9a9dad0282e475854eda32beee95259c2997c0087ecc2a250ff7d4d306b3",
+      "source_sha256": "1a07a7663ee07a4f352d4c7f1a0896e9e025a295cc154066b86bfe5c18b263ee"
+    }
+  }
+}

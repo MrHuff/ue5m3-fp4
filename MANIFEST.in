@@ -1,9 +1,19 @@
-include LICENSE
-include NOTICE
+include .env.example
+include .dockerignore
 include CITATION.cff
 include CONTRIBUTING.md
+include LICENSE
+include NOTICE
 include README.md
 include SECURITY.md
 include SOURCE_PROVENANCE.md
+include reproduce/Dockerfile
+
 recursive-include docs *.md
 recursive-include examples *.py
+recursive-include reproduce *.csv *.json *.lock *.md *.pdf *.png *.py *.sh *.toml *.yaml
+recursive-include tests *.py
+
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude .DS_Store

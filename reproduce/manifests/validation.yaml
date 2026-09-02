@@ -1,0 +1,158 @@
+schema: ue5m3_fp4_public_validation_protocol
+version: 1
+historical_manifest:
+  protocol_name: fp4_inference_protocols_v1
+  protocol_sha256: 0b23108cef628cdb083c0ca8293bd593543857d288ee0b739513ac93271a2244
+  quantized_curve_revision: uniform-source-v2
+  quantized_curve_source_sha256: e08a084ee68d6999a73462af3f7e042ddd8048a926b45323c861a31698631e64
+  note: >-
+    This public YAML removes private storage addresses while preserving the
+    numerical and ordering contract. It is not the original byte-for-byte
+    manifest.
+
+validation_data:
+  manifest_path: REPLACE_WITH_FROZEN_VALIDATION_MANIFEST
+  historical_manifest_sha256: ee78fd2c8f7e3b2516c03973105cc5fd589018e748196aa038eb234216958486
+  source_relationship: post-training-cursor held-out stream
+  records: 768
+  model_input_tokens_per_record: 8192
+  target_only_tokens_per_record: 1
+  evaluated_next_token_targets_per_record: 8192
+  evaluated_tokens_total: 6291456
+  padding: none
+  batch_size: 1
+  ordering:
+    shards: ascending original data-parallel rank
+    rows_within_shard: ascending row index
+    shuffle: false
+    seed: null
+  reset_scale_state_between_records: false
+  integrity_requirements:
+    - Verify the manifest SHA-256 before model construction.
+    - Verify every referenced shard's size and content digest.
+    - Reject duplicate record identities.
+    - Preserve the exact order for D=50 evaluation.
+
+checkpoint_grid:
+  steps: [2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000, 22500, 25000, 27500, 30000]
+  configurations:
+    - bf16
+    - ue5m3_proposed_b16
+    - ue5m3_proposed_b32
+    - ue5m3_torch_control
+    - ue5m3_transformer_engine_settings
+    - native_transformer_engine_nvfp4
+    - native_nvfp4_no_rht_all_linears
+  expected_results: 84
+  checkpoint_root: REPLACE_WITH_CHECKPOINT_ROOT
+  resolved_training_config_required: true
+
+execution:
+  model_mode: eval
+  gradient_enabled: false
+  processes_per_checkpoint: 1
+  attention_backend: sdpa
+  one_logical_work_unit: one complete batch-one 8192-token model forward
+  checkpoint_master_weights: bfloat16
+  software_ue5m3_post_load_order:
+    - Load learned BF16 master weights into a fresh model.
+    - Apply the checkpoint's recorded FP4 module conversion when required.
+    - Put the model in eval mode.
+    - Reset all inference and legacy delayed-amax state.
+    - Sample and freeze every unchanged weight tensor's global amax.
+    - Configure the selected activation policy.
+    - Enter measurement only after setup succeeds.
+  native_nvfp4_post_load_order:
+    - Load learned BF16 master weights into a fresh model.
+    - Convert eligible linears into fresh pinned Transformer Engine modules.
+    - Verify native current-tensor D=1 scaling and row-alignment state.
+    - Enter measurement and record native module forward counters.
+
+metric:
+  kind: autoregressive next-token negative log-likelihood
+  logits_and_cross_entropy_precision: float32
+  accumulation_precision: float64
+  reduction: sum per-token cross-entropy divided by 6291456
+  perplexity: exp(mean_negative_log_likelihood)
+  percent_nll_reduction_reference: bf16 at the same checkpoint step
+  percent_nll_reduction_formula: 100 * (bf16_nll - candidate_nll) / bf16_nll
+  interpretation: >-
+    Positive percentage means lower held-out NLL than BF16; held-out NLL is
+    the validation loss.
+
+protocols:
+  learned_weight_bf16:
+    fp4_quantization_applied: false
+    weights: checkpoint BF16 master weights
+    activation_scaling: null
+
+  fp4_current_tensor_d1:
+    fp4_quantization_applied: true
+    weights:
+      scale_mode: frozen post-load
+      definition: one global amax sample from each unchanged loaded weight tensor
+    activations:
+      scale_mode: current tensor
+      refresh_interval_work_units: 1
+      refresh_before_current_forward: true
+      cache_reuse: false
+
+  fp4_activation_cold_replay_d50:
+    fp4_quantization_applied: true
+    weights:
+      scale_mode: frozen post-load
+      definition: one global amax sample from each unchanged loaded weight tensor
+    activations:
+      scale_mode: periodic sample-and-hold
+      initial_cache: cold
+      checkpoint_cache_inherited: false
+      refresh_interval_work_units: 50
+      refresh_before_current_forward: true
+      one_based_refresh_work_units: [1, 51, 101, 151]
+      refresh_rule: zero_based_record_index modulo 50 equals 0
+      counter_scope: one complete checkpoint-evaluation process
+      reset_between_records: false
+    interpretation: >-
+      This replays a deterministic inference forward-batch schedule. It neither
+      reconstructs the unsaved training cache nor equates one validation
+      forward with one 768-sequence optimizer step.
+
+  fp4_calibrated_frozen_optional:
+    included_in_main_84_point_curve: false
+    fp4_quantization_applied: true
+    calibration_manifest_path: REPLACE_WITH_DISJOINT_CALIBRATION_MANIFEST
+    calibration_sequences: 64
+    model_input_tokens_per_sequence: 8192
+    target_only_tokens_per_sequence: 1
+    required_disjoint_from_validation: true
+    activation_scale_mode: maximum amax over ordered calibration forwards, then frozen
+    weight_scale_mode: frozen post-load
+    measurement_updates: false
+
+  native_transformer_engine_current_tensor_d1:
+    fp4_quantization_applied: true
+    implementation: transformer_engine.pytorch.NVFP4BlockScaling
+    fresh_post_load_module_state: true
+    activation_scale_mode: current tensor
+    effective_refresh_interval: 1
+    warning: >-
+      The audited production Transformer Engine v12 runtime did not expose the
+      project's experimental delayed-amax lifecycle API. Do not label these
+      native evaluation results D=50.
+
+configuration_protocol_binding:
+  bf16: learned_weight_bf16
+  ue5m3_proposed_b16: fp4_activation_cold_replay_d50
+  ue5m3_proposed_b32: fp4_activation_cold_replay_d50
+  ue5m3_torch_control: fp4_activation_cold_replay_d50
+  ue5m3_transformer_engine_settings: fp4_current_tensor_d1
+  native_transformer_engine_nvfp4: native_transformer_engine_current_tensor_d1
+  native_nvfp4_no_rht_all_linears: native_transformer_engine_current_tensor_d1
+
+reporting_requirements:
+  - Record the checkpoint identity and resolved training-config digest.
+  - Record code, container, dependency, validation-manifest, and protocol digests.
+  - Record conversion coverage and reject missing or unexpected eligible linears.
+  - Record scale refresh and reuse counters for every quantized run.
+  - Keep BF16 and FP4 results visibly distinct; learned-weight BF16 is not an FP4 inference result.
+  - Do not treat the 12 checkpoints from one trajectory as independent runs.

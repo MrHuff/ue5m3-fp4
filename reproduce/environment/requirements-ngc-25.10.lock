@@ -1,0 +1,24 @@
+# CPython 3.12 / Linux aarch64 wheels validated against the immutable
+# nvcr.io/nvidia/pytorch:25.10-py3 manifest recorded in reproduce/Dockerfile.
+# PyTorch, CUDA, cuDNN, NCCL, Triton, and cut-cross-entropy are supplied by the
+# digest-pinned base image and are intentionally not installed from PyPI. Install
+# this file with both --no-deps and --require-hashes so the base image remains the
+# complete transitive-runtime boundary.
+datasets==3.6.0 \
+    --hash=sha256:25000c4a2c0873a710df127d08a202a06eab7bf42441a6bc278b499c2f72cd1b
+huggingface-hub==0.36.0 \
+    --hash=sha256:7bcc9ad17d5b3f07b57c78e79d527102d08313caa278a641993acddcb894548d
+PyYAML==6.0.2 \
+    --hash=sha256:1f71ea527786de97d1a0cc0eacd1defc0985dcf6b3f17bb77dcfc8c34bec4dc5
+safetensors==0.6.2 \
+    --hash=sha256:1d2d2b3ce1e2509c68932ca03ab8f20570920cd9754b05063d4368ee52833ecd
+tensorboard==2.20.0 \
+    --hash=sha256:9dc9f978cb84c0723acf9a345d96c184f0293d18f166bb8d59ee098e6cfaaba6
+tokenizers==0.21.4 \
+    --hash=sha256:39b376f5a1aee67b4d29032ee85511bbd1b99007ec735f7f35c8a2eb104eade5
+torchdata==0.11.0 \
+    --hash=sha256:52b940fbbe0e00fb21cabddf528449d1bec5bfb0d0823b7487b15f951658ee33
+transformers==4.48.2 \
+    --hash=sha256:493bc5b0268b116eff305edf6656367fc89cf570e7a9d5891369e04751db698a
+tyro==1.0.5 \
+    --hash=sha256:87fcba42a1136cdabef8776a456bb4a05c0d52b81ccc2529e65c75da059ff3cd

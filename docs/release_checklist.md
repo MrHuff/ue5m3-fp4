@@ -1,83 +1,138 @@
-# Public-alpha release checklist
+# Release checklist for 0.2.0a0
 
-This checklist covers the portable decoded-PyTorch fake-quantization reference
-that is present in this repository. Graphcore approved public release of this
-standalone extraction under Apache-2.0 with the current `NOTICE` on 2 September
-2026. The approval does not broaden the repository's technical claims: this
-alpha is neither a native UE5M3 implementation nor a complete reproduction of
-the paper's 8B experiments.
+This checklist applies to the expanded release containing the CUDA/Triton
+numerical path, public TorchTitan/Nemotron-H method integration, and sanitized
+paper-result artifacts. It does not certify a byte-identical rerun of the
+historical jobs.
 
-## Public-alpha release basis
+Record commands, environment, results, skips, and artifact hashes in
+[`verification.md`](verification.md). Do not mark a gate complete because an
+older release passed it.
 
-- [x] Obtain Graphcore approval for public release under Apache-2.0.
-- [x] Review and approve the current `NOTICE` for this extraction.
-- [x] Build the extraction on fresh Git history without importing source Git
-  objects.
-- [x] Keep credentials, non-public checkpoint locations, private storage names,
-  and cluster manifests out of source, tests, and examples.
-- [x] Run Gitleaks 8.29.1 over all five commits through `f43d29d`; the
-  2 September 2026 scan reported no leaks.
-- [x] After committing the public-release documentation, rerun Gitleaks over
-  the complete resulting history. The final pre-tag scan of all seven commits
-  reported no leaks.
-- [x] Immediately after changing repository visibility, enable GitHub private
-  vulnerability reporting and verify that GitHub reports it as enabled.
-- [x] Provide a private fallback contact in `SECURITY.md`.
-- [x] Exclude corporate logos and internal report templates.
-- [x] Add author, report, contact, license, and repository metadata in
-  `CITATION.cff` and `pyproject.toml`.
+## Reproduction claims
 
-## Portable reference verification
+- [ ] Confirm the README separately describes:
+  - the exact released numerical/kernel implementation;
+  - the runnable public TorchTitan method reconstruction;
+  - audited, sanitized paper outputs; and
+  - unavailable byte-identical historical replay.
+- [ ] Confirm every runnable config is under `reproduce/configs/` and accepted
+  by the launcher.
+- [ ] Confirm every record-only config is under `reproduce/historical_specs/`
+  and rejected by the launcher.
+- [ ] Confirm native NVFP4 documentation states the exact Transformer Engine
+  and hardware requirements and reports only the effective runtime behavior.
+- [ ] Confirm no text implies that the public deterministic data loader
+  recreates the unavailable historical Mosaic object order or cursor.
+- [ ] Confirm no text implies that audited CSV outputs were recomputed from
+  publicly distributed checkpoints or evaluation inputs.
+- [ ] Confirm single-run evidence and evaluation-example bootstrap intervals
+  are described accurately.
 
-- [x] Provide a synthetic end-to-end training, checkpoint-reload, and
-  quantized-inference example.
-- [x] Document that the decoded-Torch path is software fake quantization, not
-  native UE5M3 hardware or the paper's probe-matched comparator.
-- [x] Require explicit model-conversion coverage rather than silently choosing
-  eligible linears.
-- [x] Keep the canonical training and inference recipes in source
-  distributions.
-- [x] Verify that those recipes are installed and discoverable from a wheel.
-- [x] Build the wheel and sdist, install the wheel into a fresh environment,
-  and rerun all tests and examples in the recorded reference environment.
-- [x] Run lint, formatting checks, 77 CPU tests, and all three synthetic
-  inference-policy examples.
-- [ ] From the final tagged commit, rebuild any published wheel and sdist and
-  publish their SHA-256 digests with the release artifacts.
-- [x] Verify the README and test suite from a clean public clone after the
-  visibility change.
+## Source, privacy, and licensing
+
+- [ ] Review the final source allowlist; exclude credentials, private storage
+  locations, internal-only paths, private orchestration, checkpoints, and
+  model weights.
+- [ ] `python reproduce/scripts/audit_public_tree.py --history`
+- [ ] Run a working-tree and complete-history secret scan against the final
+  commit; record tool versions and results.
+- [ ] Verify downloaders exclude model-weight formats and fail closed on an
+  unexpected asset hash.
+- [ ] Confirm Apache-2.0 headers and `LICENSE` are present for project files.
+- [ ] Review `NOTICE` against the final expanded extraction and retain
+  applicable NVIDIA attribution.
+- [ ] Confirm third-party submodule licenses and immutable Git revisions.
+- [ ] Confirm the release owner has approved the final expanded source and
+  notice boundary for publication.
+- [ ] Confirm `.env.example` contains placeholders only.
+
+## Static, CPU, and package checks
+
+- [ ] `ruff check src tests examples reproduce`
+- [ ] `ruff format --check src tests examples reproduce`
+- [ ] `PYTHONPATH=src:third_party/torchtitan python -m pytest`
+- [ ] `PYTHONPATH=src python examples/tiny_mlp.py --activation-mode current_tensor`
+- [ ] `PYTHONPATH=src python examples/tiny_mlp.py --activation-mode training_replay`
+- [ ] `PYTHONPATH=src python examples/tiny_mlp.py --activation-mode calibrated_frozen`
+- [ ] `python reproduce/scripts/validate_bundle.py`
+- [ ] Parse each runnable TOML through the pinned TorchTitan config manager.
+- [ ] Validate `CITATION.cff` as CFF 1.2.0 and confirm version `0.2.0a0` matches
+  `pyproject.toml`.
+- [ ] `python -m build`
+- [ ] Inspect wheel and sdist inventories for required code, recipes,
+  reproduction metadata, and prohibited generated/private files.
+- [ ] Install the wheel into a clean environment and test package resource and
+  CLI entry points.
+- [ ] Run `reproduce/scripts/install_olmes_runtime.sh` in a fresh CPython 3.12
+  Linux aarch64 environment and verify the lock plus all three source pins.
+- [ ] Confirm documentation says a complete Git checkout is required for
+  submodule-backed training; wheel/sdist installation alone is insufficient.
+
+## CUDA/Triton and model integration
+
+- [ ] Build `reproduce/Dockerfile` from the final commit and record the image
+  digest.
+- [ ] Run `reproduce/scripts/verify_runtime.py` inside the image.
+- [ ] Run all CUDA/Triton tests on a recorded supported NVIDIA GPU.
+- [ ] Verify E2M1/UE5M3 quantization against the portable reference at edge,
+  tie, underflow, saturation, B=16, and B=32 cases.
+- [ ] Verify the K=64 issue-RZ GEMM and selected output-grid behavior on the
+  documented CUDA/Triton runtime.
+- [ ] Construct the reported 8B Nemotron-H model from the pinned, patched
+  no-weight assets and verify parameter count, 52-layer pattern, SDPA mixers,
+  and state-dict roots.
+- [ ] Verify B16 and B32 conversion selects the exact expected 112 internal
+  linears and leaves only the vocabulary head excluded from FP4, with its BF16
+  checkpoint parameter retained and its matrix multiplication computed in FP32.
+- [ ] Verify the Mamba fused training path cannot bypass a converted
+  `out_proj`.
+- [ ] Run a minimal TorchTitan optimizer-step smoke and prove D=50 advances
+  once per optimizer step rather than per accumulation microbatch.
+- [ ] For native NVFP4 configs, verify or explicitly record that the pinned
+  Transformer Engine build and suitable Blackwell hardware were unavailable.
+
+## Checkpoints, evaluation, and reference artifacts
+
+- [ ] Exercise DCP-to-HF conversion on a public smoke checkpoint and verify the
+  strict state-dict adapter and safetensors inventory.
+- [ ] Run BF16 and quantized validation smoke inputs through the public CLI;
+  verify provenance differentiates BF16, D=1, cold D=50, and
+  calibrated/frozen paths.
+- [ ] Verify calibration/validation overlap, duplicate records, changed files,
+  and invalid checkpoint layouts fail closed.
+- [ ] Verify the public OLMES wrapper runs or dry-runs all seven numeric paths,
+  records a new identity for public task reconstruction, and accepts frozen
+  replay only after the supplied archive and manifest pass every hash and
+  inventory check.
+- [ ] Verify all sanitized result-table hashes and invariants in
+  `reproduce/reference_results/provenance.json`.
+- [ ] Regenerate reference figures/tables and compare their hashes with
+  `generated/artifact_manifest.json`.
+- [ ] Scan sanitized CSV, JSON, and generated files for private storage or job
+  identifiers.
 
 ## Publication operations
 
-- [x] Commit the exact reviewed public-alpha tree.
-- [x] Confirm that `SOURCE_PROVENANCE.md` hashes match the final extracted
-  sources.
-- [x] Complete the final full-history secret scan described above.
-- [x] Change `MrHuff/ue5m3-fp4` to public visibility and verify the rendered
-  README, license, citation, and security links.
-- [x] Enable private vulnerability reporting and verify its enabled state.
-- [x] Tag the reviewed commit as `v0.1.0a0` before publishing package
-  artifacts.
+- [ ] Review the final diff and ensure `SOURCE_PROVENANCE.md` hashes were
+  refreshed only after source changes stopped.
+- [ ] Commit the exact reviewed tree and rerun all commit-dependent checks.
+- [ ] Tag the reviewed commit as `v0.2.0a0`.
+- [ ] Build release artifacts from that tag and publish their SHA-256 digests.
+- [ ] Verify the public repository renders README, license, citation, security,
+  and reproduction links correctly.
+- [ ] Verify GitHub private vulnerability reporting remains enabled.
 
-## Non-blocking integration roadmap
+## Explicit non-claims for this release
 
-The following work would support additional environments or stronger
-reproduction claims. It is intentionally not a gate for publishing the current
-portable CPU fake-quantization reference:
+These are known boundaries, not failures to disclose:
 
-- Test released Python/PyTorch combinations and document a supported CPU/CUDA
-  matrix.
-- Run numerical checks on documented CUDA hardware with exact device, CUDA,
-  PyTorch, and matmul-policy provenance.
-- Add an optional TorchTitan/Nemotron-H adapter and the architecture's reviewed
-  eligible-linear allowlist without vendored submodules.
-- Add the probe-matched GEMM backend before claiming reproduction of the
-  report's corresponding comparisons.
-- Add independently runnable Transformer Engine/NVFP4 and BF16 reference paths
-  before presenting cross-path reproduction results from this repository.
-- Add sanitized public data manifests and model-checkpoint acquisition
-  instructions, subject to the relevant model and dataset licenses.
-- Add an OLMES runner and paper-scale launch configurations before advertising
-  one-command reproduction of the 8B experiments.
-- Add CI after reviewing workflow permissions and pinning third-party actions
-  to immutable revisions.
+- no historical model checkpoints or private Mosaic MDS inventory/cursor are
+  distributed;
+- no frozen quantized-OLMES request archive is distributed;
+- the public data order is a new deterministic identity;
+- one independent training trajectory exists per reported configuration;
+- the probe-matched path is software fake quantization, not native UE5M3
+  hardware; and
+- audited paper metrics can be inspected and re-rendered but cannot be
+  recomputed from their original inputs using this repository alone.

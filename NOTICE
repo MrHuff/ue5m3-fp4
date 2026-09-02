@@ -1,12 +1,30 @@
 UE5M3 FP4
 Copyright 2026 Graphcore Ltd.
 
-This clean extraction is derived from Graphcore's gc-training repository at
-commit 99a96f2a345ab4a9d37904cfdcdf93777458106d.
+This work is distributed under the Apache License, Version 2.0. See LICENSE.
 
-The floating-point format and rounding implementation follows numerical logic
-previously adapted from NVIDIA TransformerEngine, which is distributed under
-the Apache License 2.0.  The source revision inspected during extraction was
-01aef4fc721bd12fd09cd56d53a314aee1b953d6.  The extracted implementation is
-reduced to the E2M1 and unsigned-E5M3 behaviors needed by this project and adds
-the UE5M3 recipe, scale lifecycle, tests, and documentation.
+This clean extraction is derived from Graphcore's original research
+implementation at source revision
+99a96f2a345ab4a9d37904cfdcdf93777458106d. The public release removes
+credentials, private storage locations, private orchestration, model
+checkpoints, and private data artifacts.
+
+Portions of the floating-point format, rounding, and quantization logic were
+adapted from NVIDIA Transformer Engine, Copyright 2022-2025 NVIDIA CORPORATION
+& AFFILIATES, distributed under the Apache License, Version 2.0. The source
+revision inspected during extraction was
+01aef4fc721bd12fd09cd56d53a314aee1b953d6. The released implementation is
+specialized to the E2M1 and unsigned-E5M3 behavior used by this project and
+adds the UE5M3 recipe, scale lifecycle, probe-matched GEMM composition, tests,
+and documentation.
+
+The Git submodules under third_party are independent upstream works and retain
+their own copyright and license notices:
+
+- PyTorch TorchTitan, BSD 3-Clause License;
+- NVIDIA Transformer Engine, Apache License 2.0; and
+- Allen Institute for AI OLMES, Apache License 2.0.
+
+Nemotron-H model/tokenizer assets and OLMo Mix data are not distributed in
+this repository. The reproduction scripts obtain them from their upstream
+repositories at recorded revisions; their upstream terms continue to apply.

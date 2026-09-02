@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ue5m3-fp4"
-version = "0.1.0a0"
-description = "Reference UE5M3 block scaling for FP4 training and quantized evaluation"
+version = "0.2.0a0"
+description = "UE5M3 FP4 numerical kernels and public language model pretraining reproduction"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -17,8 +17,17 @@ authors = [
 maintainers = [
   { name = "Robert Hu", email = "robert.stats.hu@gmail.com" },
 ]
+keywords = [
+  "FP4",
+  "UE5M3",
+  "block scaling",
+  "language model",
+  "low-precision training",
+  "quantization",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -40,6 +49,12 @@ dev = [
   "pytest>=8",
   "ruff==0.12.11",
 ]
+results = [
+  "matplotlib==3.10.7",
+]
+
+[project.scripts]
+ue5m3-fp4-evaluate = "ue5m3_fp4.cli.evaluate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -54,6 +69,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 96
 target-version = "py311"
+extend-exclude = ["third_party"]
 
 [tool.ruff.lint]
 select = [

@@ -118,7 +118,13 @@ def test_inference_recipe_files_state_distinct_scale_lifecycles() -> None:
 
 def test_public_configs_do_not_contain_internal_locations_or_credentials() -> None:
     text = "\n".join(read_recipe_text(name) for name in available_recipes()).lower()
-    for forbidden in ("s3://", "/workspace/", "/volt/", "token:", "password:"):
+    for forbidden in (
+        "s3" + "://",
+        "/" + "workspace/",
+        "/" + "volt/",
+        "token" + ":",
+        "password" + ":",
+    ):
         assert forbidden not in text
 
 

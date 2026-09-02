@@ -1,0 +1,213 @@
+{
+  "evidence_class": "archived_report_evidence",
+  "note": "These are compact summaries of completed historical runs, not outputs produced by the public scripts in this directory. The original model weights and private workload plumbing are not distributed.",
+  "schema": "ue5m3_fp4_archived_diagnostic_summary_v1",
+  "studies": {
+    "accumulator_witness_ladder": {
+      "source_artifact_sha256": "94d5f9b0fba541631fb1f8cf44902cb5822ef86ae1b7ed29280083b645488726",
+      "rows": [
+        {
+          "bf16_exact": 0,
+          "method": "decoded operands followed by Torch BF16 matmul",
+          "trials": 7
+        },
+        {
+          "bf16_exact": 6,
+          "method": "exact decoded sum with final 1/1024 grid",
+          "trials": 7
+        },
+        {
+          "bf16_exact": 6,
+          "method": "K64 groups with RNE cross-group additions",
+          "trials": 7
+        },
+        {
+          "bf16_exact": 7,
+          "method": "K64 groups with RTZ cross-group additions",
+          "trials": 7
+        }
+      ]
+    },
+    "final_grid_native_witnesses": {
+      "matches_by_denominator": {
+        "0": 258,
+        "256": 180,
+        "512": 221,
+        "1024": 258,
+        "2048": 258,
+        "4096": 258
+      },
+      "source_artifact_sha256": "f506d8c962ff36d6ce3c7233cc95b61bd491c7197cfab56ccaf02d97e2bd8967",
+      "trials": 258
+    },
+    "gemm_large_matrix_ablation": {
+      "source_artifact_sha256": "931038b5bb9e9137fd89b3161c67be9d86af0daa86be4cbdbfdd8b456dc65d57",
+      "rows": [
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 6,
+          "method": "RNE accumulation baseline",
+          "samples": 512,
+          "source": "packed random"
+        },
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 366,
+          "method": "probe-matched emulator",
+          "samples": 512,
+          "source": "packed random"
+        },
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 485,
+          "method": "RNE accumulation baseline",
+          "samples": 512,
+          "source": "TE-quantized wide"
+        },
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 512,
+          "method": "probe-matched emulator",
+          "samples": 512,
+          "source": "TE-quantized wide"
+        },
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 512,
+          "method": "RNE accumulation baseline",
+          "samples": 512,
+          "source": "TE-quantized with RHT and 2D weights"
+        },
+        {
+          "bf16_exact": 512,
+          "fp32_exact": 512,
+          "method": "probe-matched emulator",
+          "samples": 512,
+          "source": "TE-quantized with RHT and 2D weights"
+        }
+      ]
+    },
+    "issue_width_permutation_ablation": {
+      "source_artifact_sha256": "a6b88f4562e7a722df234358d577868e99d13978f2d3c409fed30dfd362b51dd",
+      "rows": [
+        {
+          "cross_group_rounding": "RNE",
+          "exact": 143,
+          "issue_width": 16,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RNE",
+          "exact": 144,
+          "issue_width": 32,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RNE",
+          "exact": 149,
+          "issue_width": 64,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RNE",
+          "exact": 144,
+          "issue_width": 128,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RTZ",
+          "exact": 244,
+          "issue_width": 16,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RTZ",
+          "exact": 251,
+          "issue_width": 32,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RTZ",
+          "exact": 258,
+          "issue_width": 64,
+          "trials": 258
+        },
+        {
+          "cross_group_rounding": "RTZ",
+          "exact": 242,
+          "issue_width": 128,
+          "trials": 258
+        }
+      ]
+    },
+    "model_1_292b_one_step": {
+      "batch_size": 1,
+      "gradient_elements_compared": 1291929600,
+      "gradient_max_absolute_difference": 0.0,
+      "gradient_relative_l2": 0.0,
+      "logits_exact_equal": true,
+      "loss_absolute_difference": 0.0,
+      "parameters": 1291929600,
+      "quantized_linears": 96,
+      "randomized_hadamard_transform": true,
+      "sequence_length": 64,
+      "source_artifact_sha256": "214c69c0b12959f54469049a7b796a32de7398ebbc9efceedfa7a52ed17bd0a1",
+      "stochastic_gradient_rounding": false
+    },
+    "model_1_292b_training_100_step": {
+      "all_step_logits_and_losses_exact": true,
+      "batch_size": 1,
+      "final_gradient_different_elements": 1,
+      "final_gradient_max_absolute_difference": 2.842170943040401e-14,
+      "final_optimizer_tensor_values_exact": 2583859363,
+      "final_parameter_values_exact": 1291929600,
+      "parameters": 1291929600,
+      "quantized_linears": 96,
+      "randomized_hadamard_transform": true,
+      "sequence_length": 64,
+      "source_artifact_sha256": "897b6a8bf42165f26700a8528c29b340bcfcbd79ebf67fd6e2f947f4d3cd6c3b",
+      "steps": 100,
+      "stochastic_gradient_rounding": false,
+      "transformer_engine_native_library_sha256": "ee48109c098415b28541d9aba99e1599d0a006cb394110a6743ca6410b243e2d",
+      "weight_2d_quantization": true
+    },
+    "native_8b_runtime_ablation": {
+      "batch_size": 1,
+      "hardware": "NVIDIA GB200",
+      "measured_steps": 100,
+      "model_parameters": 8084075520,
+      "native_nvfp4_no_rht_all_linears_tokens_per_second": 3893.87,
+      "sequence_length": 1024,
+      "source_artifact_sha256": "6fb8e0edadff1c7b86c57fa628f61c6a9cbc3d31cecf4bce6b2e496a07db185c",
+      "throughput_increase_percent": 21.214,
+      "transformer_engine_recipe_tokens_per_second": 3212.39
+    },
+    "tiny_grid_regression": {
+      "denominators": [
+        0,
+        256,
+        512,
+        1024,
+        2048,
+        4096
+      ],
+      "gradient_rounding_modes": [
+        "ties_to_even",
+        "stochastic_8bit_midpoint"
+      ],
+      "parameter_count": 81920,
+      "parameter_states_bit_exact_to_no_grid": true,
+      "seeds": [
+        41,
+        42,
+        43
+      ],
+      "source_artifact_sha256_by_gradient_rounding": {
+        "stochastic_8bit_midpoint": "b91c2dcf1ac6007ace465cde173dacda54b6be2d1862383a7366c1a07e7e3075",
+        "ties_to_even": "d0050f7c1f5d6ad8fbc716b7c78ae8b48b8181cb35f5dacfd27d2acab044f165"
+      },
+      "steps": 500,
+      "trajectories_bit_exact_to_no_grid": true
+    }
+  }
+}

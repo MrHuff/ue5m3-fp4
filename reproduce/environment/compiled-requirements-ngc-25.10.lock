@@ -1,0 +1,5 @@
+# Install these with --no-build-isolation after the base runtime requirements.
+causal-conv1d==1.6.2.post1 \
+    --hash=sha256:245e314ea21064ded7a5bf6b3b842b644aa6f92e45cecfe3e935629744c35ff4
+mamba-ssm==2.3.2.post1 \
+    --hash=sha256:104cc47e9101e5401a675fa2b784f2952b9b037f3b1dd83b5ac544394e95d028

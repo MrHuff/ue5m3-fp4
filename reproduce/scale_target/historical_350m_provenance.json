@@ -1,0 +1,135 @@
+{
+  "schema": "ue5m3_scale_target_350m_public_provenance_v1",
+  "artifact_lineage": {
+    "archived_report_csv_sha256": "3e694f928138db678dffd7547cdd244d19e9c549129ee7e4b9913c03db842d00",
+    "archived_report_provenance_sha256": "247ecff11ef9d82d1600dd3db75ccafd7cfbbb71d65ce16ac00c4668d7736020",
+    "public_final_window_csv_sha256": "9752d6a18ed87cbcdf9d3882d81dc409fa1f227ab8cc814bf45f6ddece8db4f6",
+    "source_commit": "e56fd837afe5926d3d8799f7134efb3d06db8a22",
+    "source_model_implementation_sha256": "da2bb728c735f8afd392efb745f7656355018b86aec3a6bfd4ca1bfd2e38a959",
+    "source_training_config_sha256": "e07df61ef7aadda0116d74bf847457ae0648a95ba497f61ffb26f04f28f2fa49",
+    "source_experiment_specification_sha256": "e99f96c92881cee22516195364ec1c53e3f3083c647281b1719af12d44169af8"
+  },
+  "public_rerun_status": {
+    "status": "record_only",
+    "reason": "The public repository does not include the historical 350M model implementation, the exact ordered training stream, or the original distributed orchestration. The numerical records and effective experiment specification are preserved, but an exact-identity rerun must not be inferred from this archive."
+  },
+  "experiment": {
+    "comparison": "Matched single-seed 350M T=448 versus final-four Wgrad-dY T=2048 ablation",
+    "model": {
+      "family": "dense decoder-only Transformer",
+      "label": "350M_paper",
+      "vocabulary_size": 131072,
+      "hidden_size": 1024,
+      "layers": 16,
+      "attention_heads": 8,
+      "key_value_heads": 4,
+      "feed_forward_hidden_size": 3072,
+      "normalization_epsilon": 0.00001,
+      "rotary_base": 10000.0,
+      "maximum_sequence_length": 8192,
+      "tied_embeddings": false,
+      "attention_mask": "causal"
+    },
+    "training": {
+      "seed": 42,
+      "steps": 10000,
+      "sequence_length": 8192,
+      "local_batch_size": 12,
+      "global_batch_size": 768,
+      "workers": {
+        "nodes": 1,
+        "accelerators_per_node": 4
+      },
+      "optimizer": {
+        "name": "AdamW",
+        "learning_rate": 0.0012,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "weight_decay": 0.1,
+        "maximum_gradient_norm": 1.0
+      },
+      "loss": "compiled cross entropy",
+      "logging_interval_steps": 25,
+      "data_family": "SlimPajama-627B",
+      "exact_ordered_data_identity_available": false
+    },
+    "shared_fp4_recipe": {
+      "payload_format": "E2M1",
+      "block_scale_format": "UE5M3",
+      "block_size": 16,
+      "default_scale_target": 448,
+      "tensor_scaling": true,
+      "tensor_reference": "periodic sample-and-hold current tensor amax",
+      "delayed_amax_interval": 50,
+      "delayed_amax_paths": [
+        "activations",
+        "weights",
+        "gradients"
+      ],
+      "delayed_amax_safety_factor": 1.0,
+      "two_dimensional_weight_blocks": true,
+      "randomized_hadamard_transform": false,
+      "activation_rounding": "ties_to_even",
+      "weight_rounding": "ties_to_even",
+      "gradient_rounding": "stochastic_fast_8bit_midpoint",
+      "scale_rounding": "ties_to_even"
+    },
+    "configurations": [
+      {
+        "label": "default_T448",
+        "scale_target": 448,
+        "override": "none; T=448 is used for every eligible operand"
+      },
+      {
+        "label": "final_four_w2_wgrad_dY_T2048",
+        "scale_target": 2048,
+        "override": "T=2048 only for the upstream-gradient dY operand of the feed_forward.w2 weight-gradient GEMMs in layers 12, 13, 14, and 15; every other eligible operand retains T=448"
+      }
+    ]
+  },
+  "measurement": {
+    "metric": "training loss",
+    "final_window_definition": "logged steps strictly greater than 10000 - 250",
+    "final_window_steps": [
+      9775,
+      9800,
+      9825,
+      9850,
+      9875,
+      9900,
+      9925,
+      9950,
+      9975,
+      10000
+    ],
+    "independent_runs_per_configuration": 1,
+    "summaries": [
+      {
+        "configuration": "default_T448",
+        "points": 10,
+        "final_window_mean_training_loss": 2.9090431690216065,
+        "final_window_population_standard_deviation": 0.03196243286685411,
+        "step_10000_training_loss": 2.862741470336914,
+        "raw_history_rows": 411,
+        "unique_history_steps": 401,
+        "raw_scan_csv_sha256": "dfbb21c56d92059c9ee4ee3ee9532f5853e52285a578e51a6e2784c769e0d008",
+        "deduplicated_csv_sha256": "50eea034facb077679e45d850d0929b97280daf3d9f233032232c65d16c2fb7a",
+        "training_output_sha256": "00b1c8cd4dbedf6ec0d0b019c7d0406624bfc92268a4d6b302e09c3745702ecc"
+      },
+      {
+        "configuration": "final_four_w2_wgrad_dY_T2048",
+        "points": 10,
+        "final_window_mean_training_loss": 2.9024837970733643,
+        "final_window_population_standard_deviation": 0.03197716799379655,
+        "step_10000_training_loss": 2.8579535484313965,
+        "raw_history_rows": 411,
+        "unique_history_steps": 401,
+        "raw_scan_csv_sha256": "97b2df32da22effc205b8246bdb0c13ad527a5de2980bc03a5a1324bff6707e4",
+        "deduplicated_csv_sha256": "b0a7c6202b10a499a04ede704ff317c015fce9e8341a4fadb6f53ea9815694e1",
+        "training_output_sha256": "685f19feb0dac01c97665e830c1b378e6decd6f6d5e6115dd0db351ef792a45b"
+      }
+    ],
+    "mean_training_loss_difference_T2048_minus_T448": -0.0065593719482422,
+    "interpretation_limit": "This is a controlled single-seed final-window training-loss ablation. Logged points from one trajectory are not independent runs, and this result is not a validation-loss or statistical-significance estimate."
+  }
+}

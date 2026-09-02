@@ -16,9 +16,9 @@ first converts the eligible linear layers, then quantizes their loaded weights
 and forward activations to FP4-representable values during every measured
 forward.
 
-## Common setup
+## Software UE5M3 setup
 
-Perform post-load setup in this order:
+For the software UE5M3 paths, perform post-load setup in this order:
 
 1. Load the learned master weights and call `model.eval()`.
 2. Reset every FP4 module's process-local inference state.
@@ -33,13 +33,20 @@ partially configured model. It also records the checkpoint identity, resolved
 format, frozen references, work-unit order, refresh trace, and scale-resolution
 counters.
 
+Native Transformer Engine NVFP4 uses a separate lifecycle. It converts the
+eligible linears into fresh pinned-TE modules after checkpoint load, verifies
+current-tensor D=1 scaling, and initializes no software UE5M3 controller or
+frozen weight-amax cache. The evaluator records and checks each native module's
+effective state and forward count.
+
 ## Activation policies
 
 ### Current tensor (`current_tensor`, D=1)
 
 Measure the current activation operand's `amax` and use it immediately. There
-is no activation-cache reuse. This policy is independent of evaluation order,
-apart from ordinary model-state effects.
+is no activation-cache reuse, so the policy is independent of prior-cache
+history. Quantization still depends on the current batch composition; batching
+and collation therefore remain part of the evaluation protocol.
 
 ### Cold periodic replay (`training_replay`, D=50)
 
@@ -128,18 +135,27 @@ and content hash; absolute local paths are not emitted. Inputs can be in-memory
 `int32`/`int64` tensors or local safetensors files containing a rank-two
 `tokens` tensor.
 
-## Fake UE5M3 versus native NVFP4
+## Evaluation paths
 
-The UE5M3 path is software FP4 simulation: eligible operands are genuinely
-rounded to E2M1 values using UE5M3 block scales. The initial public linear
-reference then decodes those operands and passes float32 inputs to PyTorch
-matrix multiplication. Runtime provenance records PyTorch's matmul-precision
-policy and CUDA TF32 setting when applicable. The path therefore preserves
-operand-quantization error but does not yet reproduce the probe-matched native
-reduction and output-rounding model. It is not native UE5M3 execution or a
-hardware-throughput measurement.
+The released evaluator supports all seven reported numerical paths: learned
+BF16; proposed UE5M3 B=16 and B=32; the generic-Torch UE5M3 control; UE5M3 with
+Transformer Engine settings; native Transformer Engine NVFP4; and native
+NVFP4 without RHT over all eligible linears. Every UE5M3 FP4 path rounds loaded
+weights and forward activations to E2M1 values with UE5M3 block scales during
+measurement. The proposed and Transformer-Engine-settings paths use the
+released probe-matched Triton GEMM; the generic-Torch control uses the released
+Triton quantizer followed by Torch FP32 matrix multiplication.
 
 Native Transformer Engine NVFP4 is a separate path using E2M1 payloads with
-E4M3 block scales on supported hardware. Results must label these numeric paths
-separately; running BF16 matrix multiplication after loading a quantized-trained
-checkpoint is neither of them.
+E4M3 block scales on supported Blackwell hardware. It fails closed unless the
+pinned Transformer Engine build is present. Results label every numerical path
+and inference-scale policy separately; evaluating the learned master weights
+without conversion is the BF16 reference, not an FP4 result.
+
+The software UE5M3 paths reproduce the numerical model used for the reported
+experiments, but they are not native UE5M3 execution and do not measure native
+UE5M3 hardware throughput. See
+[`reproduce/docs/numerical_protocol.md`](../reproduce/docs/numerical_protocol.md)
+for the complete training and inference contract and
+[`reproduce/README.md`](../reproduce/README.md) for checkpoint and OLMES
+commands.

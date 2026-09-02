@@ -7,7 +7,7 @@
 Every sequence contains one more token than is forwarded to the model.  For a
 row named ``tokens``, ``tokens[:-1]`` is the model input and ``tokens[1:]`` is
 the position-aligned target.  Labels are never passed to the model because
-causal language-model implementations commonly shift labels internally.
+causal language model implementations commonly shift labels internally.
 
 Inputs may be in-memory integer tensors or local ``.safetensors`` files.  A
 tensor can have shape ``[sequence_length + 1]`` or
@@ -372,7 +372,7 @@ def _sequence_loss_sums_from_hidden_states(
     *,
     chunk_tokens: int,
 ) -> torch.Tensor:
-    """Apply the language-model head and FP32 CE in bounded position chunks."""
+    """Apply the language model head and FP32 CE in bounded position chunks."""
 
     if hidden_states.ndim != 3 or hidden_states.shape[:2] != targets.shape:
         raise ValueError(

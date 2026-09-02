@@ -1,0 +1,22 @@
+task_key,label,benchmark,score_percent,delta_vs_bf16_pp
+bf16,BF16,core_9mcqa_olmes,65.1377199705,0
+bf16,BF16,mmlu_olmes,39.635628981,0
+bf16,BF16,mmlu_pro_mc,11.2367021277,0
+ue5m3_te_recipe,"UE5M3 with TE settings, D=1",core_9mcqa_olmes,64.432900455,-0.704819515462
+ue5m3_te_recipe,"UE5M3 with TE settings, D=1",mmlu_olmes,38.5729885987,-1.06264038228
+ue5m3_te_recipe,"UE5M3 with TE settings, D=1",mmlu_pro_mc,11.3613696809,0.124667553191
+ue5m3_proposed_b16,"Proposed UE5M3, B=16, D=50",core_9mcqa_olmes,63.8183836991,-1.3193362714
+ue5m3_proposed_b16,"Proposed UE5M3, B=16, D=50",mmlu_olmes,38.9729549539,-0.662674027027
+ue5m3_proposed_b16,"Proposed UE5M3, B=16, D=50",mmlu_pro_mc,11.0621675532,-0.174534574468
+ue5m3_proposed_b32,"Proposed UE5M3, B=32, D=50",core_9mcqa_olmes,62.8497746584,-2.28794531209
+ue5m3_proposed_b32,"Proposed UE5M3, B=32, D=50",mmlu_olmes,38.1414165914,-1.4942123896
+ue5m3_proposed_b32,"Proposed UE5M3, B=32, D=50",mmlu_pro_mc,11.0372340426,-0.199468085106
+ue5m3_proposed_torch,"UE5M3 Torch control, B=16, D=50",core_9mcqa_olmes,63.5443662744,-1.59335369608
+ue5m3_proposed_torch,"UE5M3 Torch control, B=16, D=50",mmlu_olmes,38.3150905797,-1.32053840127
+ue5m3_proposed_torch,"UE5M3 Torch control, B=16, D=50",mmlu_pro_mc,10.9375,-0.29920212766
+nvfp4_te_recipe,"Transformer Engine NVFP4, D=1",core_9mcqa_olmes,63.6920680026,-1.44565196788
+nvfp4_te_recipe,"Transformer Engine NVFP4, D=1",mmlu_olmes,37.9644826095,-1.67114637142
+nvfp4_te_recipe,"Transformer Engine NVFP4, D=1",mmlu_pro_mc,11.053856383,-0.182845744681
+nvfp4_proposed_settings,"Native NVFP4, no RHT/all linears, D=1",core_9mcqa_olmes,59.9416191471,-5.19610082339
+nvfp4_proposed_settings,"Native NVFP4, no RHT/all linears, D=1",mmlu_olmes,35.1149188917,-4.52071008928
+nvfp4_proposed_settings,"Native NVFP4, no RHT/all linears, D=1",mmlu_pro_mc,11.2865691489,0.0498670212766

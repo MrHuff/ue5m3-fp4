@@ -10,6 +10,18 @@ build/
 dist/
 *.egg-info/
 
+# Never stage model/checkpoint payloads in this source-only repository.
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.gguf
+pytorch_model*.bin
+model*.bin
+checkpoints/
+checkpoint/
+
 .env
 .env.*
 !.env.example

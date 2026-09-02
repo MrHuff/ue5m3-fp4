@@ -1,0 +1,183 @@
+{
+  "generated_from": "reviewed UE5M3 paper data",
+  "invariants": {
+    "independent_training_seeds_per_configuration": 1,
+    "olmes_aggregate_cells": 21,
+    "olmes_benchmarks": [
+      "core_9mcqa_olmes",
+      "mmlu_olmes",
+      "mmlu_pro_mc"
+    ],
+    "olmes_configurations": [
+      "bf16",
+      "nvfp4_proposed_settings",
+      "nvfp4_te_recipe",
+      "ue5m3_proposed_b16",
+      "ue5m3_proposed_b32",
+      "ue5m3_proposed_torch",
+      "ue5m3_te_recipe"
+    ],
+    "olmes_leaf_task_cells": 1022,
+    "olmes_leaf_tasks_per_configuration": 146,
+    "olmes_paired_differences": 36,
+    "validation_comparisons": 144,
+    "validation_points": 84
+  },
+  "schema": "ue5m3_fp4_public_reference_results_v1",
+  "tables": [
+    {
+      "public_columns": [
+        "schema",
+        "task_index",
+        "trajectory_key",
+        "trajectory_label",
+        "step",
+        "protocol_key",
+        "recipe_adapter",
+        "numeric_path",
+        "fp4_quantization_applied",
+        "runtime_effective_activation_scaling",
+        "order_dependent_scale_state",
+        "sequences",
+        "token_count",
+        "loss_sum",
+        "nll",
+        "perplexity",
+        "nll_sequence_bootstrap_ci95_low",
+        "nll_sequence_bootstrap_ci95_high",
+        "interval_status",
+        "interval_method",
+        "result_bytes_sha256"
+      ],
+      "public_file": "validation_metrics.csv",
+      "public_rows": 84,
+      "public_sha256": "0b2d4eb383c6a485c0dc97cd1c083570046c22330916805c978d5c2974a8bf13",
+      "removed_columns": [
+        "result_uri"
+      ],
+      "source": "data/quantized_validation_curve_metrics.csv",
+      "source_rows": 84,
+      "source_sha256": "1202ca7d6c1b43041c6d7c55441c5b788b12ae12f1f321bb338698a280f66d05"
+    },
+    {
+      "public_columns": [
+        "schema",
+        "candidate_trajectory_key",
+        "candidate_trajectory_label",
+        "reference_trajectory_key",
+        "reference_trajectory_label",
+        "step",
+        "candidate_protocol_key",
+        "reference_protocol_key",
+        "candidate_nll",
+        "reference_nll",
+        "nll_delta_candidate_minus_reference",
+        "nll_percent_delta_candidate_vs_reference",
+        "nll_delta_paired_ci95_low",
+        "nll_delta_paired_ci95_high",
+        "nll_percent_delta_paired_ci95_low",
+        "nll_percent_delta_paired_ci95_high",
+        "paired_interval_includes_zero",
+        "ordering",
+        "interval_status",
+        "interval_method"
+      ],
+      "public_file": "validation_comparisons.csv",
+      "public_rows": 144,
+      "public_sha256": "38adadd640dfcab7ffbf053e0cfcb496ac99aa73476a5f316e301c0fa4c51696",
+      "removed_columns": [
+        "candidate_result_uri",
+        "reference_result_uri"
+      ],
+      "source": "data/quantized_validation_curve_comparisons.csv",
+      "source_rows": 144,
+      "source_sha256": "42ad41467c58b6339c14e86233af24989ddd22e686a0bfd112bdc9b4eaee94d6"
+    },
+    {
+      "public_columns": [
+        "task_key",
+        "task_label",
+        "protocol_key",
+        "numeric_path",
+        "fp4_quantization_applied",
+        "benchmark",
+        "score",
+        "score_percent",
+        "official_aggregate_alias",
+        "official_metric_key",
+        "aggregation",
+        "underlying_evaluation_examples"
+      ],
+      "public_file": "olmes_aggregate_scores.csv",
+      "public_rows": 21,
+      "public_sha256": "1efc2c27d4e2ce49d0f67f7fccff1b8c61352148d8e623d438d60bc3e61a2140",
+      "removed_columns": [
+        "checkpoint_uri"
+      ],
+      "source": "quantized_olmes/scores.csv",
+      "source_rows": 21,
+      "source_sha256": "6065e6beb65e973701ced62161424c387adf059bf1dcf3d5b83d5cfd592c0cf3"
+    },
+    {
+      "public_columns": [
+        "task_key",
+        "task_label",
+        "protocol_key",
+        "numeric_path",
+        "fp4_quantization_applied",
+        "leaf_task_index",
+        "benchmark",
+        "task_alias",
+        "task_name",
+        "task_hash",
+        "primary_metric",
+        "example_count",
+        "score",
+        "score_percent"
+      ],
+      "public_file": "olmes_leaf_task_metrics.csv",
+      "public_rows": 1022,
+      "public_sha256": "5b4655055c905696230293d159da62decc989af99ccbb9e048d05f71a09468fc",
+      "removed_columns": [
+        "checkpoint_uri"
+      ],
+      "source": "quantized_olmes/leaf_task_metrics.csv",
+      "source_rows": 1022,
+      "source_sha256": "fefcdb3cfa76c76616fc8b372533ea353b23f62d839e8fed4322614526cfa920"
+    },
+    {
+      "public_columns": [
+        "candidate_key",
+        "candidate_label",
+        "candidate_protocol_key",
+        "reference_key",
+        "reference_label",
+        "reference_protocol_key",
+        "benchmark",
+        "candidate_score",
+        "reference_score",
+        "difference",
+        "difference_percentage_points",
+        "difference_definition",
+        "interval_status",
+        "ci95_lower",
+        "ci95_upper",
+        "ci95_lower_percentage_points",
+        "ci95_upper_percentage_points",
+        "paired_interval_includes_zero",
+        "bootstrap_samples",
+        "bootstrap_seed",
+        "uncertainty_scope",
+        "training_run_variability_estimated"
+      ],
+      "public_file": "olmes_paired_differences.csv",
+      "public_rows": 36,
+      "public_sha256": "8eec6cb54896bf800e6c0e91f4128a7aad6b747fd5fd4b4defbf3300ba13430d",
+      "removed_columns": [],
+      "source": "quantized_olmes/paired_differences.csv",
+      "source_rows": 36,
+      "source_sha256": "8eec6cb54896bf800e6c0e91f4128a7aad6b747fd5fd4b4defbf3300ba13430d"
+    }
+  ],
+  "transformation": "lossless CSV row/field copy except explicitly listed private storage columns"
+}

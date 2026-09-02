@@ -1,0 +1,9 @@
+[submodule "third_party/torchtitan"]
+	path = third_party/torchtitan
+	url = https://github.com/pytorch/torchtitan.git
+[submodule "third_party/TransformerEngine"]
+	path = third_party/TransformerEngine
+	url = https://github.com/NVIDIA/TransformerEngine.git
+[submodule "third_party/olmes"]
+	path = third_party/olmes
+	url = https://github.com/allenai/olmes.git

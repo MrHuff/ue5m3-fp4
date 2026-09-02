@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 import torch
 
 from ue5m3_fp4.formats import RoundingMode, quantize_dequantize_blocks
 from ue5m3_fp4.recipe import UE5M3Recipe
-from ue5m3_fp4.scaling.training import TrainingScaleState
+from ue5m3_fp4.scaling.training import TrainingScaleState, sample_global_amax
 
 _INFERENCE_ACTIVATION_MODES = {
     "current_tensor",
@@ -19,12 +20,98 @@ _INFERENCE_ACTIVATION_MODES = {
     "calibrated_frozen",
 }
 
+_TE_SETTINGS_RHT_SIGNS_B16 = (
+    1,
+    1,
+    1,
+    -1,
+    1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    -1,
+    1,
+    -1,
+    1,
+    -1,
+    -1,
+)
+
+
+class LinearBackend(StrEnum):
+    """Numerical backend used by :class:`UE5M3Linear`."""
+
+    PORTABLE = "portable_decoded_torch_reference"
+    PROBE_MATCHED_TRITON = "probe_matched_triton_issue_rz"
+    TRITON_QUANT_TORCH = "triton_quantized_torch_fp32"
+
+
+def normalize_linear_backend(value: str | LinearBackend) -> LinearBackend:
+    """Parse a public backend name without silently selecting a fallback."""
+
+    if isinstance(value, LinearBackend):
+        return value
+    if not isinstance(value, str):
+        raise TypeError("backend must be a string or LinearBackend")
+    aliases = {
+        "portable": LinearBackend.PORTABLE,
+        LinearBackend.PORTABLE.value: LinearBackend.PORTABLE,
+        "probe_matched": LinearBackend.PROBE_MATCHED_TRITON,
+        "triton": LinearBackend.PROBE_MATCHED_TRITON,
+        LinearBackend.PROBE_MATCHED_TRITON.value: LinearBackend.PROBE_MATCHED_TRITON,
+        "torch_control": LinearBackend.TRITON_QUANT_TORCH,
+        LinearBackend.TRITON_QUANT_TORCH.value: LinearBackend.TRITON_QUANT_TORCH,
+    }
+    try:
+        return aliases[value.strip().lower()]
+    except KeyError as error:
+        choices = ", ".join(item.value for item in LinearBackend)
+        raise ValueError(
+            f"unknown UE5M3 linear backend {value!r}; expected {choices}"
+        ) from error
+
 
 def _finite_amax(tensor: torch.Tensor) -> torch.Tensor:
-    value = tensor.detach().to(torch.float32).abs().amax()
-    if not torch.isfinite(value):
-        raise RuntimeError("UE5M3 scaling requires a finite tensor amax")
-    return value
+    return sample_global_amax(tensor, label="UE5M3 operand amax")
+
+
+def _te_settings_rht_last_dim_b16(tensor: torch.Tensor) -> torch.Tensor:
+    """Apply the recovered fixed-sign, normalized B=16 Hadamard transform.
+
+    Transformer Engine's NVFP4 recipe transforms only columnwise operand
+    representations. The reported UE5M3 comparator materialized the transform
+    through a BF16 Torch matmul, so this helper intentionally preserves that
+    rounding boundary instead of replacing it with an algebraically equivalent
+    FP32 implementation.
+    """
+
+    if not isinstance(tensor, torch.Tensor):
+        raise TypeError("RHT input must be a torch.Tensor")
+    if tensor.ndim != 2:
+        raise ValueError("the reported B=16 RHT expects a rank-2 operand")
+    if tensor.shape[-1] % 16:
+        raise ValueError("the reported B=16 RHT requires the last dimension divisible by 16")
+    signs = torch.tensor(
+        _TE_SETTINGS_RHT_SIGNS_B16,
+        dtype=torch.float32,
+        device=tensor.device,
+    )
+    hadamard = torch.ones((1, 1), dtype=torch.float32, device=tensor.device)
+    for _ in range(4):
+        hadamard = torch.cat(
+            (
+                torch.cat((hadamard, hadamard), dim=1),
+                torch.cat((hadamard, -hadamard), dim=1),
+            ),
+            dim=0,
+        )
+    transformed = torch.matmul(
+        (tensor.reshape(-1, 16).to(torch.float32) * signs).to(torch.bfloat16),
+        (hadamard / 4.0).to(torch.bfloat16),
+    )
+    return transformed.reshape(tensor.shape).contiguous()
 
 
 class _UE5M3LinearFunction(torch.autograd.Function):
@@ -131,6 +218,208 @@ class _UE5M3LinearFunction(torch.autograd.Function):
         )
 
 
+def _reported_quantized_gemm(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    *,
+    owner: UE5M3Linear,
+    role_a: str,
+    role_b: str,
+    tensor_reference_a: torch.Tensor,
+    tensor_reference_b: torch.Tensor,
+    two_dimensional_b: bool,
+) -> torch.Tensor:
+    """Run one reported CUDA GEMM without any implicit backend fallback."""
+
+    if not a.is_cuda or not b.is_cuda:
+        raise RuntimeError(
+            "The probe-matched Triton backend requires CUDA operands; "
+            "select backend='portable' explicitly for the CPU reference"
+        )
+    try:
+        from ue5m3_fp4.backends.triton import (
+            fake_quantize_gemm_operands,
+            probe_matched_fp4_gemm,
+            triton_available,
+        )
+    except ImportError as error:
+        raise RuntimeError(
+            "The probe-matched Triton backend was requested but its dependencies "
+            "could not be imported"
+        ) from error
+    if not triton_available():
+        raise RuntimeError(
+            "The probe-matched Triton backend was requested but CUDA/Triton is unavailable"
+        )
+    common = {
+        "block_size": owner.recipe.block_size,
+        "scale_target_a": owner.recipe.scale_target_for(role_a, owner.module_name),
+        "scale_target_b": owner.recipe.scale_target_for(role_b, owner.module_name),
+        "tensor_amax_a": tensor_reference_a,
+        "tensor_amax_b": tensor_reference_b,
+        "rounding_a": owner.recipe.rounding_for(role_a),
+        "rounding_b": owner.recipe.rounding_for(role_b),
+        "two_dimensional_b": two_dimensional_b,
+    }
+    a = a.contiguous()
+    b = b.contiguous()
+    if owner.backend is LinearBackend.PROBE_MATCHED_TRITON:
+        return probe_matched_fp4_gemm(
+            a,
+            b,
+            **common,
+            snap_to_1_over_1024=True,
+        )
+    if owner.backend is LinearBackend.TRITON_QUANT_TORCH:
+        encoded_a, encoded_b = fake_quantize_gemm_operands(
+            a,
+            b,
+            **common,
+            output_domain="encoded",
+            output_dtype=torch.bfloat16,
+        )
+        with torch.autocast(device_type="cuda", enabled=False):
+            encoded_output = torch.mm(encoded_a.float(), encoded_b.float())
+        alpha = (tensor_reference_a.float() * tensor_reference_b.float()) / (
+            (common["scale_target_a"] * 6.0) * (common["scale_target_b"] * 6.0)
+        )
+        return encoded_output * alpha
+    raise AssertionError(f"backend {owner.backend.value!r} is not a reported CUDA backend")
+
+
+class _ProbeMatchedUE5M3LinearFunction(torch.autograd.Function):
+    """Autograd definition for the reported Triton-quantized CUDA paths."""
+
+    @staticmethod
+    def forward(
+        ctx: Any,
+        inputs: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor | None,
+        owner: UE5M3Linear,
+    ) -> torch.Tensor:
+        if owner._inference["active"] and torch.is_grad_enabled():
+            raise RuntimeError("Post-load FP4 inference is forward-only")
+        if inputs.dtype is not torch.bfloat16:
+            raise TypeError(
+                "The probe-matched reported path requires BF16 activations at the "
+                "linear boundary"
+            )
+        if weight.dtype not in {torch.bfloat16, torch.float32}:
+            raise TypeError("The probe-matched path requires BF16 or FP32 master weights")
+
+        input_shape = inputs.shape
+        input_flat = inputs.reshape(-1, inputs.shape[-1]).contiguous()
+        weight_for_gemm = weight.to(torch.float32).transpose(0, 1).contiguous()
+        activation_reference = owner._forward_reference("activation", input_flat)
+        weight_reference = owner._forward_reference("weight", weight)
+        activation_rht_reference = None
+        if owner.recipe.randomized_hadamard_transform and not owner._inference["active"]:
+            # The forward GEMM itself remains untransformed. This current amax
+            # belongs to the transformed X.T representation retained for wgrad.
+            input_transposed_rht = _te_settings_rht_last_dim_b16(
+                input_flat.to(torch.float32).transpose(0, 1).contiguous()
+            )
+            activation_rht_reference = _finite_amax(input_transposed_rht)
+        output = _reported_quantized_gemm(
+            input_flat,
+            weight_for_gemm,
+            owner=owner,
+            role_a="activation",
+            role_b="weight",
+            tensor_reference_a=activation_reference,
+            tensor_reference_b=weight_reference,
+            two_dimensional_b=owner.recipe.two_dimensional_weights,
+        )
+        if bias is not None:
+            output = output + bias.to(torch.float32)
+        output = output.reshape(*input_shape[:-1], weight.shape[0]).to(torch.bfloat16)
+
+        ctx.owner = owner
+        ctx.has_bias = bias is not None
+        ctx.bias_dtype = bias.dtype if bias is not None else None
+        ctx.activation_reference = activation_reference.detach()
+        ctx.activation_rht_reference = (
+            activation_rht_reference.detach() if activation_rht_reference is not None else None
+        )
+        ctx.weight_reference = weight_reference.detach()
+        ctx.save_for_backward(inputs, weight)
+        return output
+
+    @staticmethod
+    def backward(
+        ctx: Any,
+        grad_output: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, None]:
+        owner: UE5M3Linear = ctx.owner
+        if owner._inference["active"]:
+            raise RuntimeError("Backward is forbidden after FP4 inference is configured")
+
+        inputs, weight = ctx.saved_tensors
+        dy = grad_output.to(torch.bfloat16).reshape(-1, grad_output.shape[-1])
+        dy = dy.to(torch.float32).contiguous()
+        saved_inputs = inputs.to(torch.bfloat16).reshape(-1, inputs.shape[-1])
+        saved_inputs = saved_inputs.to(torch.float32).contiguous()
+        weight_for_dgrad = weight.to(torch.float32).contiguous()
+
+        # The proposed no-RHT recipe shares this held dY reference between
+        # dgrad and wgrad. The TE-settings comparator uses it only for dgrad;
+        # wgrad samples the amax of transformed dY.T below. StochasticFast
+        # payload draws remain separate for the two GEMMs.
+        dy_reference = owner.scale_state.reference(
+            "upstream_gradient",
+            owner.module_name,
+            dy,
+        )
+        grad_input = _reported_quantized_gemm(
+            dy,
+            weight_for_dgrad,
+            owner=owner,
+            role_a="upstream_gradient",
+            role_b="weight",
+            tensor_reference_a=dy_reference,
+            tensor_reference_b=ctx.weight_reference,
+            two_dimensional_b=owner.recipe.two_dimensional_weights,
+        )
+
+        dy_transposed = dy.transpose(0, 1).contiguous()
+        wgrad_inputs = saved_inputs
+        wgrad_dy_reference = dy_reference
+        wgrad_activation_reference = ctx.activation_reference
+        if owner.recipe.randomized_hadamard_transform:
+            if ctx.activation_rht_reference is None:
+                raise RuntimeError("missing saved transformed-activation amax for RHT wgrad")
+            # This is the only transformed GEMM in the reported UE5M3
+            # TE-settings path. Dgrad above uses untransformed dY and W.
+            dy_transposed = _te_settings_rht_last_dim_b16(dy_transposed)
+            saved_inputs_transposed = _te_settings_rht_last_dim_b16(
+                saved_inputs.transpose(0, 1).contiguous()
+            )
+            wgrad_inputs = saved_inputs_transposed.transpose(0, 1).contiguous()
+            wgrad_dy_reference = _finite_amax(dy_transposed)
+            wgrad_activation_reference = ctx.activation_rht_reference
+        grad_weight = _reported_quantized_gemm(
+            dy_transposed,
+            wgrad_inputs,
+            owner=owner,
+            role_a="wgrad_upstream_gradient",
+            role_b="activation",
+            tensor_reference_a=wgrad_dy_reference,
+            tensor_reference_b=wgrad_activation_reference,
+            two_dimensional_b=False,
+        )
+
+        grad_bias = None
+        if ctx.has_bias:
+            grad_bias = dy.sum(dim=0).to(ctx.bias_dtype)
+        return (
+            grad_input.reshape_as(inputs).to(torch.bfloat16),
+            grad_weight.to(weight.dtype),
+            grad_bias,
+            None,
+        )
+
+
 class UE5M3Linear(torch.nn.Module):
     """An ``nn.Linear`` compatible UE5M3/E2M1 software reference.
 
@@ -147,6 +436,7 @@ class UE5M3Linear(torch.nn.Module):
         *,
         recipe: UE5M3Recipe | None = None,
         scale_state: TrainingScaleState | None = None,
+        backend: str | LinearBackend = LinearBackend.PORTABLE,
         module_name: str = "linear",
         device: torch.device | str | None = None,
         dtype: torch.dtype | None = None,
@@ -163,6 +453,19 @@ class UE5M3Linear(torch.nn.Module):
         if scale_state is not None and scale_state.recipe != self.recipe:
             raise ValueError("scale_state.recipe must match the linear recipe")
         self.scale_state = scale_state or TrainingScaleState(self.recipe)
+        self.backend = normalize_linear_backend(backend)
+        if self.recipe.randomized_hadamard_transform:
+            expected = UE5M3Recipe.transformer_engine_settings()
+            if self.recipe != expected:
+                raise ValueError(
+                    "the public RHT implementation accepts only the reported "
+                    "UE5M3 Transformer-Engine-settings recipe"
+                )
+            if self.backend is not LinearBackend.PROBE_MATCHED_TRITON:
+                raise ValueError(
+                    "the reported UE5M3 RHT comparator requires the probe-matched "
+                    "Triton backend"
+                )
         self.module_name = module_name
         factory_kwargs = {"device": device, "dtype": dtype}
         self.weight = torch.nn.Parameter(
@@ -192,6 +495,7 @@ class UE5M3Linear(torch.nn.Module):
         *,
         recipe: UE5M3Recipe,
         scale_state: TrainingScaleState,
+        backend: str | LinearBackend = LinearBackend.PORTABLE,
         module_name: str,
     ) -> UE5M3Linear:
         if not isinstance(module, torch.nn.Linear):
@@ -202,6 +506,7 @@ class UE5M3Linear(torch.nn.Module):
             bias=module.bias is not None,
             recipe=recipe,
             scale_state=scale_state,
+            backend=backend,
             module_name=module_name,
             device="meta",
             dtype=module.weight.dtype,
@@ -303,7 +608,16 @@ class UE5M3Linear(torch.nn.Module):
             raise RuntimeError(
                 "Post-load FP4 inference requires torch.no_grad() or torch.inference_mode()"
             )
-        return _UE5M3LinearFunction.apply(inputs, self.weight, self.bias, self)
+        if self.backend is LinearBackend.PORTABLE:
+            function = _UE5M3LinearFunction
+        elif self.backend in {
+            LinearBackend.PROBE_MATCHED_TRITON,
+            LinearBackend.TRITON_QUANT_TORCH,
+        }:
+            function = _ProbeMatchedUE5M3LinearFunction
+        else:  # pragma: no cover - enum normalization makes this unreachable.
+            raise AssertionError(f"unhandled linear backend: {self.backend}")
+        return function.apply(inputs, self.weight, self.bias, self)
 
     # Post-load inference lifecycle.  These method names intentionally match
     # FP4InferenceScalingController's small module protocol.
@@ -455,8 +769,10 @@ class UE5M3Linear(torch.nn.Module):
 
     def fp4_inference_scaling_report(self) -> dict[str, Any]:
         state = self._inference
+        probe_matched = self.backend is LinearBackend.PROBE_MATCHED_TRITON
+        triton_torch_control = self.backend is LinearBackend.TRITON_QUANT_TORCH
         matmul_policy = {
-            "input_dtype": "float32",
+            "input_dtype": "bfloat16" if probe_matched else "float32",
             "device_type": self.weight.device.type,
             "torch_float32_matmul_precision": None,
             "cuda_matmul_fp32_precision": None,
@@ -494,7 +810,7 @@ class UE5M3Linear(torch.nn.Module):
                 "round_mode_weights": self.recipe.weight_rounding,
             },
             "training_replay": {
-                "interval": 50,
+                "interval": self.recipe.delayed_scale_interval,
                 "logical_step": state["training_replay_logical_step"],
                 "last_consumed_step": state["training_replay_last_consumed_step"],
                 "cache": {"forward.x": state["training_replay_cache"]},
@@ -509,13 +825,32 @@ class UE5M3Linear(torch.nn.Module):
                     "activation", self.module_name
                 ),
                 "scale_max_weights": self.recipe.scale_target_for("weight", self.module_name),
-                "gemm_output_model": "decoded_operand_torch_matmul",
+                "gemm_output_model": (
+                    "encoded_operand_k64_issue_rz_bf16_gemm_final_snap_1_over_1024"
+                    if probe_matched
+                    else (
+                        "encoded_operand_torch_fp32_matmul"
+                        if triton_torch_control
+                        else "decoded_operand_torch_matmul"
+                    )
+                ),
                 "torch_matmul_policy": matmul_policy,
                 "native_hardware": False,
-                "encode_centric": False,
-                "use_encoded_gemm": False,
+                "encode_centric": probe_matched or triton_torch_control,
+                "use_encoded_gemm": probe_matched or triton_torch_control,
+                "linear_backend": self.backend.value,
+                "randomized_hadamard_transform": {
+                    "forward_gemm": False,
+                    "data_gradient_gemm": False,
+                    "weight_gradient_operands": bool(self.recipe.randomized_hadamard_transform),
+                    "block_size": (16 if self.recipe.randomized_hadamard_transform else None),
+                },
             },
         }
 
 
-__all__ = ["UE5M3Linear"]
+__all__ = [
+    "LinearBackend",
+    "UE5M3Linear",
+    "normalize_linear_backend",
+]

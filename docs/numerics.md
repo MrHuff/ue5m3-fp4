@@ -12,8 +12,9 @@ implementation detail.
 ## Formats and block scaling
 
 E2M1 uses one sign bit, two exponent bits, and one fraction bit. Its largest
-finite magnitude is 6. Each block of 16 values in the proposed recipe shares
-one eight-bit scale.
+finite magnitude is 6. In the proposed B=16 recipe, each one-dimensional
+activation block contains 16 values and each two-dimensional weight tile is
+16-by-16; the B=32 ablation uses the corresponding 32 and 32-by-32 shapes.
 
 A block scale is a nonnegative magnitude, so a sign bit has no useful role.
 UE5M3 assigns all eight bits to five exponent bits and three fraction bits. The
@@ -24,8 +25,10 @@ bits; UE5M3 gains range, not additional fractional precision.
 For each operand, a tensor-wide reference first establishes the range in which
 the per-block scale is represented. The default scale target is 448. The
 Nemotron-H 8B recipe uses a target of 2,048 only for the `dY` operand in the
-weight-gradient GEMM of `mixer.down_proj` in layers 44 through 51. That override is
-architecture-specific and must not be applied silently to other models.
+weight-gradient GEMM of `mixer.down_proj` in zero-based layers 45, 47, 49, and
+51. The selector spans layers 44 through 51, but only those four layers contain
+the applicable MLP module. This override is architecture-specific and must not
+be applied silently to other models.
 
 Weights use two-dimensional scaling so that the forward and transposed views
 used by the backward GEMMs agree on their block organization. A block scale
@@ -65,7 +68,7 @@ each GEMM:
 - data gradient: row-wise `dY` in `dX = dY @ W`;
 - weight gradient: row-wise `dY.T` in `dW = dY.T @ X`.
 
-The no-RHT recipe computes one delayed tensor reference for `dY` and reuses it
+The proposed no-RHT UE5M3 recipe computes one delayed tensor reference for `dY` and reuses it
 for both GEMMs. Each quantization call draws its own random rounding values. The
 saved activation `X` in the weight-gradient GEMM remains deterministic and is
 column-scaled along that GEMM's reduction dimension.
@@ -83,21 +86,35 @@ This is an eight-bit midpoint discretization of ideal stochastic rounding. It
 must not be silently replaced by a different random-bit width or by a
 full-precision Bernoulli draw when reproducing the reported recipe.
 
-## GEMM output model
+## GEMM output models
 
 Operand fake quantization alone does not reproduce the tested native FP4 GEMM
-output. This initial public slice decodes the fake-quantized operands and
-passes float32 inputs to PyTorch matrix multiplication. The runtime provenance
-records PyTorch's configured matmul-precision policy, including the CUDA TF32
-flag when applicable. It is the decoded-Torch control, not the paper's
-probe-matched comparator.
+output. The release therefore provides three explicit UE5M3 backends:
 
-The experiments also used a probe-matched software backend that models the
-observed native reduction and output rounding. That backend is not yet part of
-this extraction, so results from this package must not be substituted for the
-paper's probe-matched results. Neither software path measures native UE5M3
-throughput. Native Transformer Engine NVFP4 uses E4M3 block scales and remains
-a separate format and execution path.
+- `probe_matched_triton_issue_rz`, the backend used for the proposed and
+  Transformer-Engine-settings UE5M3 experiments. It quantizes encoded operands
+  with the released Triton kernels, reduces in groups of 64, combines group
+  results with FP32 round-toward-zero additions, and rounds the encoded output
+  to the selected `1/1024` lattice before decoding;
+- `triton_quantized_torch_fp32`, the reported generic-Torch control. It uses
+  the same encoded Triton operand quantization followed by a Torch FP32 matrix
+  multiplication; and
+- `portable_decoded_torch_reference`, a CPU-capable decoded-operand reference
+  for tests and small numerical checks. It is not a reported 8B training path.
+
+The `1/1024` output lattice is a probe-matched comparator setting, not a claim
+that the hardware implements that rule internally. None of the software paths
+measures native UE5M3 throughput. Native Transformer Engine NVFP4 uses E4M3
+block scales and remains a separate, fail-closed execution path.
+
+## Randomized Hadamard transform placement
+
+The proposed recipe does not use a randomized Hadamard transform (RHT). In the
+UE5M3 comparator with Transformer Engine settings, RHT is confined to the two
+columnwise representations used by the weight-gradient GEMM: `dY.T` and the
+saved activation `X.T`. The forward GEMM and data-gradient GEMM remain
+untransformed. The transform uses the recorded fixed signs and normalized
+block-16 Hadamard matrix; it is not applied to weights.
 
 ## Recipe summary
 
@@ -109,12 +126,13 @@ The proposed block-16 training recipe is therefore:
   `dY`;
 - ties-to-even forward, saved-activation, and scale rounding;
 - exact `StochasticFast` rounding for `dY` in both backward GEMMs;
-- no randomized Hadamard transforms;
-- FP4 in every selected internal linear, with the language-model head retained
-  at its stated high precision.
+- no randomized Hadamard transform;
+- FP4 in every selected internal linear, with the language model head excluded
+  from FP4; its BF16 checkpoint parameter is retained and its matrix
+  multiplication is computed in FP32.
 
 The generic converter cannot infer a model architecture's eligible-linears
 policy. It therefore requires an explicit selector and returns the complete
 set of converted names. The provided `exclude_lm_head` helper preserves a
-conventionally named language-model head; architecture integrations should use
+conventionally named language model head; architecture integrations should use
 an exact allowlist when reproducing the reported model coverage.
