@@ -1,6 +1,7 @@
-# Release-candidate verification
+# Public-alpha reference verification
 
-This page records checks run against the standalone extraction on 2026-09-01.
+This page records checks run against the standalone extraction on 2026-09-01
+and the complete-history scan repeated on 2026-09-02.
 It is evidence for the portable CPU reference only; it is not a supported
 environment matrix or a GPU/native-kernel qualification.
 
@@ -14,8 +15,9 @@ environment matrix or a GPU/native-kernel qualification.
 - Ruff 0.12.11
 
 The PyTorch build is a development environment, not the minimum supported
-version declared by package metadata. Python 3.11/3.12 and released PyTorch
-versions still require a clean CI matrix before publication.
+version declared by package metadata. A matrix covering released Python and
+PyTorch versions remains useful follow-up qualification; it is not evidence
+claimed by this public alpha.
 
 ## Source checks
 
@@ -26,7 +28,7 @@ PYTHONPATH=src python -m pytest -q
 ```
 
 Results: lint passed, all 21 Python files were formatted, and 77 tests passed.
-The test count includes a check that every release-candidate digest in
+The test count includes a check that every extraction-snapshot digest in
 `SOURCE_PROVENANCE.md` matches its file.
 
 The synthetic checkpoint-reload example completed under all three activation
@@ -65,18 +67,23 @@ those strings intentionally.
 
 Gitleaks 8.29.1 was downloaded from its official GitHub release, its Linux
 arm64 archive was checked against the release checksum, and `gitleaks git`
-reported no leaks across the complete two-commit release-candidate history.
-Version 8.29.1 was used instead of 8.30.1 because a public upstream report says
-the latter can fail to apply its default rules
+reported no leaks across all five commits through `f43d29d` on 2 September
+2026. Version 8.29.1 was used instead of 8.30.1 because a public upstream
+report says the latter can fail to apply its default rules
 ([gitleaks#2170](https://github.com/gitleaks/gitleaks/issues/2170)). This does
-not close the final release gate: repeat the scan after the reviewed tag, and
-configure a tested private vulnerability-reporting channel for the destination
-repository.
+not cover later uncommitted documentation: the publication operator must repeat
+the complete-history scan after committing the final public tree and before
+changing repository visibility. GitHub private vulnerability reporting must
+then be enabled and verified immediately after the repository becomes public.
 
-## Checks still required
+## Scope and follow-up validation
 
-- GPU numerical checks on documented hardware;
-- supported released Python/PyTorch CPU and CUDA matrices;
-- a repeat complete-history scan on the final reviewed tag;
-- organizational release and licensing/attribution approval; and
-- model-scale integration and reproduction tests after those assets are added.
+Graphcore approved public release under Apache-2.0 with the current `NOTICE`.
+The remaining publication operations are the post-commit history scan and
+enabling and verifying GitHub private vulnerability reporting after the
+visibility change.
+
+GPU numerical checks, released Python/PyTorch matrices, native kernels, and
+model-scale integration remain future qualification targets. They are not
+required to publish this portable CPU fake-quantization reference, and this
+repository does not use their absence to imply paper-scale reproduction.

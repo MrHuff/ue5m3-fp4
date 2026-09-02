@@ -9,6 +9,11 @@ description = "Reference UE5M3 block scaling for FP4 training and quantized eval
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+authors = [
+  { name = "Robert Hu" },
+  { name = "Carlo Luschi" },
+  { name = "Paul Balanca" },
+]
 maintainers = [
   { name = "Robert Hu", email = "robert.stats.hu@gmail.com" },
 ]

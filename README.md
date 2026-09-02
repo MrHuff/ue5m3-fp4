@@ -5,12 +5,11 @@ The package covers the numerical recipe used for low-precision pretraining and
 the explicit scale lifecycle needed to evaluate a learned checkpoint with FP4
 fake quantization after loading it.
 
-This repository is an **alpha release candidate**. It is useful for inspecting,
-testing, and integrating the numerical method, but it is not yet a complete
-one-command reproduction of the paper's Nemotron-H 8B experiments. In
-particular, this implementation decodes fake-quantized operands and calls a
-PyTorch matrix multiplication; it does not claim native UE5M3 execution or
-hardware throughput.
+This repository is a **public alpha**. It is useful for inspecting, testing,
+and integrating the numerical method, but it is not a one-command reproduction
+of the paper's Nemotron-H 8B experiments. In particular, this implementation
+decodes fake-quantized operands and calls a PyTorch matrix multiplication; it
+does not claim native UE5M3 execution or hardware throughput.
 
 ## What is implemented
 
@@ -48,7 +47,7 @@ The package includes:
 - CPU unit tests for formats, scaling, backward paths, conversion, inference,
   and evaluation provenance.
 
-The first release intentionally excludes TorchTitan and Nemotron-H model
+The public alpha intentionally excludes TorchTitan and Nemotron-H model
 adapters, distributed checkpoint conversion, cloud/cluster launchers,
 Transformer Engine, native kernels, private datasets, and internal artifact
 locations. The probe-matched GEMM emulator used for the paper's closest native
@@ -108,10 +107,10 @@ path and is not an FP4 result.
 
 ## Install
 
-Python 3.11 or newer is required by package metadata. The supported
-Python/PyTorch CPU and CUDA matrix has not yet been frozen for the public
-release; see the release checklist. Install the editable package and
-development tools from a fresh virtual environment:
+Python 3.11 or newer is required by package metadata. The current verification
+record covers one CPU-reference environment rather than a complete
+Python/PyTorch compatibility matrix; see the release checklist. Install the
+editable package and development tools from a fresh virtual environment:
 
 ```bash
 python -m venv .venv
@@ -388,10 +387,12 @@ python -m build
 ```
 
 Then install the wheel into a clean environment and rerun the suite and
-example. Public release additionally requires the rights, attribution,
-security, full-history secret-scan, GPU numerical, and supported-version gates
-in [`docs/release_checklist.md`](docs/release_checklist.md). The exact checks
-run on this CPU release candidate are recorded in
+example. Before publishing a tagged release, repeat the full-history secret
+scan and the operational checks in
+[`docs/release_checklist.md`](docs/release_checklist.md). CUDA qualification
+and paper-scale reproduction are separate future integration targets, not
+claims made by this portable decoded-Torch reference. The exact checks run on
+the public-alpha CPU reference are recorded in
 [`docs/verification.md`](docs/verification.md).
 
 ## Numerical and result interpretation
@@ -416,12 +417,14 @@ than publishing monorepo history. File-level and third-party provenance is
 recorded in [`NOTICE`](NOTICE) and
 [`SOURCE_PROVENANCE.md`](SOURCE_PROVENANCE.md).
 
-Paper metadata and `CITATION.cff` will be added only after the author list and
-public identifier are final. Until then, cite the repository commit used for
-an experiment.
+Citation metadata for both the software and accompanying report is provided in
+[`CITATION.cff`](CITATION.cff). The preferred citation currently identifies the
+report by title and authors; its arXiv identifier can be added after assignment.
+For numerical comparisons, also record the exact repository commit used.
 
-The code is provided under the Apache License 2.0. Publication remains subject
-to the organizational and third-party checks in the release checklist.
+The code is provided under the Apache License 2.0. Graphcore approved this
+standalone extraction for public release under that license with the current
+[`NOTICE`](NOTICE).
 
 Contributions should follow [`CONTRIBUTING.md`](CONTRIBUTING.md), especially
 the numerical-change and result-provenance requirements.

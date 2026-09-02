@@ -1,5 +1,6 @@
 include LICENSE
 include NOTICE
+include CITATION.cff
 include CONTRIBUTING.md
 include README.md
 include SECURITY.md
