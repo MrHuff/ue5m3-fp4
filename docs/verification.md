@@ -67,21 +67,22 @@ those strings intentionally.
 
 Gitleaks 8.29.1 was downloaded from its official GitHub release, its Linux
 arm64 archive was checked against the release checksum, and `gitleaks git`
-reported no leaks across all five commits through `f43d29d` on 2 September
-2026. Version 8.29.1 was used instead of 8.30.1 because a public upstream
-report says the latter can fail to apply its default rules
-([gitleaks#2170](https://github.com/gitleaks/gitleaks/issues/2170)). This does
-not cover later uncommitted documentation: the publication operator must repeat
-the complete-history scan after committing the final public tree and before
-changing repository visibility. GitHub private vulnerability reporting must
-then be enabled and verified immediately after the repository becomes public.
+reported no leaks across the complete seven-commit history immediately before
+tagging `v0.1.0a0` on 2 September 2026. Version 8.29.1 was used instead of
+8.30.1 because a public upstream report says the latter can fail to apply its
+default rules
+([gitleaks#2170](https://github.com/gitleaks/gitleaks/issues/2170)).
+
+The public repository, raw citation metadata, and unauthenticated Git remote
+were reachable after the visibility change. GitHub private vulnerability
+reporting was enabled through the repository API and independently queried as
+enabled. A fresh public clone passed all 77 CPU tests.
 
 ## Scope and follow-up validation
 
 Graphcore approved public release under Apache-2.0 with the current `NOTICE`.
-The remaining publication operations are the post-commit history scan and
-enabling and verifying GitHub private vulnerability reporting after the
-visibility change.
+The release commit passed the complete-history scan, the repository is public,
+and private vulnerability reporting is enabled.
 
 GPU numerical checks, released Python/PyTorch matrices, native kernels, and
 model-scale integration remain future qualification targets. They are not

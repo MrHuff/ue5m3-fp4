@@ -17,9 +17,10 @@ the paper's 8B experiments.
   and cluster manifests out of source, tests, and examples.
 - [x] Run Gitleaks 8.29.1 over all five commits through `f43d29d`; the
   2 September 2026 scan reported no leaks.
-- [ ] After committing the final public-release documentation, rerun Gitleaks
-  over the complete resulting history before changing repository visibility.
-- [ ] Immediately after changing repository visibility, enable GitHub private
+- [x] After committing the public-release documentation, rerun Gitleaks over
+  the complete resulting history. The final pre-tag scan of all seven commits
+  reported no leaks.
+- [x] Immediately after changing repository visibility, enable GitHub private
   vulnerability reporting and verify that GitHub reports it as enabled.
 - [x] Provide a private fallback contact in `SECURITY.md`.
 - [x] Exclude corporate logos and internal report templates.
@@ -43,18 +44,20 @@ the paper's 8B experiments.
   inference-policy examples.
 - [ ] From the final tagged commit, rebuild any published wheel and sdist and
   publish their SHA-256 digests with the release artifacts.
-- [ ] Verify the README from a clean public clone after the visibility change.
+- [x] Verify the README and test suite from a clean public clone after the
+  visibility change.
 
 ## Publication operations
 
-- [ ] Commit the exact reviewed public-alpha tree.
-- [ ] Confirm that `SOURCE_PROVENANCE.md` hashes match the final extracted
+- [x] Commit the exact reviewed public-alpha tree.
+- [x] Confirm that `SOURCE_PROVENANCE.md` hashes match the final extracted
   sources.
-- [ ] Complete the final full-history secret scan described above.
-- [ ] Change `MrHuff/ue5m3-fp4` to public visibility and verify the rendered
+- [x] Complete the final full-history secret scan described above.
+- [x] Change `MrHuff/ue5m3-fp4` to public visibility and verify the rendered
   README, license, citation, and security links.
-- [ ] Enable private vulnerability reporting and verify its enabled state.
-- [ ] Tag the reviewed commit before publishing package artifacts.
+- [x] Enable private vulnerability reporting and verify its enabled state.
+- [x] Tag the reviewed commit as `v0.1.0a0` before publishing package
+  artifacts.
 
 ## Non-blocking integration roadmap
 
