@@ -7,6 +7,10 @@ probe-matched GEMM path used by the proposed experiments, a public
 Nemotron-H 8B integration for pinned upstream TorchTitan, and sanitized result
 artifacts from the reported runs.
 
+The latest Overleaf manuscript is available as a [PDF](docs/technical_report/main.pdf)
+and [LaTeX source](docs/technical_report/main.tex). See the
+[report README](docs/technical_report/README.md) for local compilation instructions.
+
 The code is released under Apache-2.0. Version `0.2.0a0` is an alpha research
 release: interfaces may change, and the supported reproduction targets below
 are deliberately narrower than “rerun every historical job byte for byte.”
